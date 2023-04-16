@@ -29,6 +29,10 @@ public class Alarm {
 	 * should be run.
 	 */
 	public void timerInterrupt() {
+		//Original Code
+		// KThread.currentThread().yield();
+
+		//New Implementation
 		KThread.currentThread().yield();
 	}
 
@@ -45,10 +49,19 @@ public class Alarm {
 	 * @see nachos.machine.Timer#getTime()
 	 */
 	public void waitUntil(long x) {
+		// Original Code
 		// for now, cheat just to get something working (busy waiting is bad)
+		// long wakeTime = Machine.timer().getTime() + x;
+		// while (wakeTime > Machine.timer().getTime())
+		// 	KThread.yield();
+
+
+		//New Implementation
+		if (x <= 0) {
+			return;
+		}
 		long wakeTime = Machine.timer().getTime() + x;
-		while (wakeTime > Machine.timer().getTime())
-			KThread.yield();
+		KThread.currentThread().sleep();
 	}
 
         /**
