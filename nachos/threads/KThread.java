@@ -56,8 +56,7 @@ public class KThread {
 	public KThread() {
 		if (currentThread != null) {
 			tcb = new TCB();
-		}
-		else {
+		} else {
 			readyQueue = ThreadedKernel.scheduler.newThreadQueue(false);
 			readyQueue.acquire(this);
 
@@ -203,6 +202,10 @@ public class KThread {
 
 		currentThread.status = statusFinished;
 
+		if (currentThread.callingThread != null) {
+			currentThread.ready();
+		}
+
 		sleep();
 	}
 
@@ -249,7 +252,6 @@ public class KThread {
 	 */
 	public static void sleep() {
 		Lib.debug(dbgThread, "Sleeping thread: " + currentThread.toString());
-
 		Lib.assertTrue(Machine.interrupt().disabled());
 
 		if (currentThread.status != statusFinished)
@@ -282,8 +284,21 @@ public class KThread {
 	 */
 	public void join() {
 		Lib.debug(dbgThread, "Joining to thread: " + toString());
+		Lib.assertTrue(this != currentThread); // a thread cannot join itself
+		Lib.assertTrue(Machine.interrupt().disabled());
+		// check if this method has already been called once
+		Lib.assertTrue(this.hasJoin);
+		this.hasJoin = true; // TODO one join on multiple; multiple join on one
 
-		Lib.assertTrue(this != currentThread);
+		// this: is the current instance of object
+		// if current running is b, and we call a.join(), this:a; currentThread: b
+		if (this.status != statusFinished) {
+			// then B waits inside of join until A finishes;
+			this.callingThread = currentThread;
+			currentThread.sleep();
+		}
+		// If A has already finished, then B returns immediately from join without
+		// waiting.
 
 	}
 
@@ -341,7 +356,7 @@ public class KThread {
 	 * sleeping or yielding).
 	 * 
 	 * @param finishing <tt>true</tt> if the current thread is finished, and
-	 * should be destroyed by the new thread.
+	 *                  should be destroyed by the new thread.
 	 */
 	private void run() {
 		Lib.assertTrue(Machine.interrupt().disabled());
@@ -441,6 +456,8 @@ public class KThread {
 	 * ready (on the ready queue but not running), running, or blocked (not on
 	 * the ready queue and not running).
 	 */
+	private boolean hasJoin = false;
+
 	private int status = statusNew;
 
 	private String name = "(unnamed thread)";
@@ -457,6 +474,8 @@ public class KThread {
 
 	/** Number of times the KThread constructor was called. */
 	private static int numCreated = 0;
+
+	private KThread callingThread = null;
 
 	private static ThreadQueue readyQueue = null;
 
