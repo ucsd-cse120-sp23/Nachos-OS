@@ -4,6 +4,7 @@ import nachos.machine.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Iterator;
 
 /**
  * Uses the hardware timer to provide preemption, and to allow threads to sleep
@@ -37,11 +38,18 @@ public class Alarm {
 		// There is no requirement that threads start running immediately after waking
 		// up; just put them on the ready queue in the timer interrupt handler after
 		// they have waited for at least the right amount of time.
-		for (Pair pair : blockedThreadList) { // TODO: iterater!!!!!!!!!
+		Iterator<Pair> iter = blockedThreadList.iterator();
+		while (iter.hasNext()) {
+			Pair pair = iter.next();
 			if (pair.getwakeTime() > Machine.timer().getTime()) {
 				pair.getCurrentThread().ready();
 			}
 		}
+		// for (Pair pair : blockedThreadList) {
+		// if (pair.getwakeTime() > Machine.timer().getTime()) {
+		// pair.getCurrentThread().ready();
+		// }
+		// }
 
 		KThread.currentThread().yield();
 	}
