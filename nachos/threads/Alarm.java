@@ -1,6 +1,9 @@
 package nachos.threads;
 
 import nachos.machine.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Uses the hardware timer to provide preemption, and to allow threads to sleep
@@ -14,6 +17,8 @@ public class Alarm {
 	 * <p>
 	 * <b>Note</b>: Nachos will not function correctly with more than one alarm.
 	 */
+	List<Pair> blockedThreadList = new ArrayList<>();
+
 	public Alarm() {
 		Machine.timer().setInterruptHandler(new Runnable() {
 			public void run() {
@@ -29,11 +34,40 @@ public class Alarm {
 	 * should be run.
 	 */
 	public void timerInterrupt() {
+
 		//Original Code
 		// KThread.currentThread().yield();
 
 		//New Implementation
+		// There is no requirement that threads start running immediately after waking
+		// up; just put them on the ready queue in the timer interrupt handler after
+		// they have waited for at least the right amount of time.
+		for (Pair pair : blockedThreadList) { // TODO: iterater!!!!!!!!!
+			if (pair.getwakeTime() > Machine.timer().getTime()) {
+				pair.getCurrentThread().ready();
+			}
+		}
+
+
 		KThread.currentThread().yield();
+	}
+
+	static class Pair {
+		private KThread currentThread;
+		private long wakeTime;
+
+		public Pair(KThread currentThread, long wakeTime) {
+			this.currentThread = currentThread;
+			this.wakeTime = wakeTime;
+		}
+
+		public KThread getCurrentThread() {
+			return currentThread;
+		}
+
+		public long getwakeTime() {
+			return wakeTime;
+		}
 	}
 
 	/**
@@ -55,25 +89,31 @@ public class Alarm {
 		// while (wakeTime > Machine.timer().getTime())
 		// 	KThread.yield();
 
+		// while (wakeTime > Machine.timer().getTime()) //busy wait will not give up CPU
+		// KThread.yield();
 
-		//New Implementation
 		if (x <= 0) {
 			return;
 		}
+		boolean state = Machine.interrupt().disable();
 		long wakeTime = Machine.timer().getTime() + x;
+		blockedThreadList.add(new Pair(KThread.currentThread(), wakeTime));
 		KThread.currentThread().sleep();
+		Machine.interrupt().restore(state);
+
 	}
 
-        /**
+	/**
 	 * Cancel any timer set by <i>thread</i>, effectively waking
 	 * up the thread immediately (placing it in the scheduler
-	 * ready set) and returning true.  If <i>thread</i> has no
+	 * ready set) and returning true. If <i>thread</i> has no
 	 * timer set, return false.
 	 * 
 	 * <p>
+	 * 
 	 * @param thread the thread whose timer should be cancelled.
 	 */
-        public boolean cancel(KThread thread) {
+	public boolean cancel(KThread thread) {
 		return false;
 	}
 }
