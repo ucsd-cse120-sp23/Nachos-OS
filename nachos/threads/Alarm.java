@@ -43,6 +43,7 @@ public class Alarm {
 			Pair pair = iter.next();
 			if (pair.getwakeTime() > Machine.timer().getTime()) {
 				pair.getCurrentThread().ready();
+				iter.remove();
 			}
 		}
 		// for (Pair pair : blockedThreadList) {
@@ -71,6 +72,30 @@ public class Alarm {
 			return wakeTime;
 		}
 	}
+
+	    // Add Alarm testing code to the Alarm class
+
+
+    // Implement more test methods here ...
+	public static void alarmTest1() {
+		int durations[] = {1000, 10*1000, 100*1000};
+		long t0, t1;
+	
+		for (int d : durations) {
+			t0 = Machine.timer().getTime();
+			ThreadedKernel.alarm.waitUntil (d);
+			t1 = Machine.timer().getTime();
+			System.out.println ("alarmTest1: waited for " + (t1 - t0) + " ticks");
+			System.out.println(d);
+		}
+		}
+
+    // Invoke Alarm.selfTest() from ThreadedKernel.selfTest()
+    public static void selfTest() {
+	alarmTest1();
+
+	// Invoke your other test methods here ...
+    }
 
 	/**
 	 * Put the current thread to sleep for at least <i>x</i> ticks, waking it up
