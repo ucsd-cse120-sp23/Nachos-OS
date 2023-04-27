@@ -40,7 +40,7 @@ public class Condition2 {
 		waitQueue.add(KThread.currentThread());
 		KThread.currentThread().sleep();
 		conditionLock.acquire();
-		Machine.interrupt().restore(intStatus); // TODO switch interrupt and lock?
+		Machine.interrupt().restore(intStatus);
 	}
 
 	/**
@@ -82,11 +82,27 @@ public class Condition2 {
 	 */
 	public void sleepFor(long timeout) {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+		boolean intStatus = Machine.interrupt().disable();
+		conditionLock.release();
+		waitQueue.add(KThread.currentThread());
+		
+		/////////////////////// Not very sure about this part
+		ThreadedKernel.alarm.waitUntil(timeout);
+		if (ThreadedKernel.alarm.removedFromAlarmQueue == true) {
+			waitQueue.remove(KThread.currentThread());
+		} 
+		//////////////////////////////////////////////////////////
+
+		///////////////////////TODO: cancel() in alarm()
+		conditionLock.acquire();
+		Machine.interrupt().restore(intStatus);
+		// if wake before timeout, it will remove condition2 queue but not the queue in alarm
+		// if timeout, not removed from the waitqueue in condition2 [need implementation]
+		// TODO how to solve this conflict????
 	}
 
 	private Lock conditionLock;
 	private ArrayList<KThread> waitQueue;
-
 
 
 	// Test for condition2
@@ -96,6 +112,25 @@ public class Condition2 {
     // alternate their execution with each other using a condition
     // variable.  (Also see the slide showing this pattern at the end
     // of Lecture 6.)
+
+	private static void sleepForTest1 () {
+		Lock lock = new Lock();
+		Condition2 cv = new Condition2(lock);
+	
+		lock.acquire();
+		long t0 = Machine.timer().getTime();
+		System.out.println (KThread.currentThread().getName() + " sleeping");
+		// no other thread will wake us up, so we should time out
+		cv.sleepFor(2000);
+		long t1 = Machine.timer().getTime();
+		System.out.println (KThread.currentThread().getName() +
+					" woke up, slept for " + (t1 - t0) + " ticks");
+		lock.release();
+		}
+	
+	public static void selfTest() {
+		sleepForTest1();
+	}
 
     private static class InterlockTest {
         private static Lock lock;
@@ -141,7 +176,7 @@ public class Condition2 {
 
     // Invoke Condition2.selfTest() from ThreadedKernel.selfTest()
 
-    public static void selfTest() {
-        new InterlockTest();
-    }
+    // public static void selfTest() {
+    //     new InterlockTest();
+    // }
 }
