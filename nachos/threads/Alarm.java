@@ -19,6 +19,7 @@ public class Alarm {
 	 * <b>Note</b>: Nachos will not function correctly with more than one alarm.
 	 */
 	List<Pair> blockedThreadList = new ArrayList<>();
+	boolean removedFromAlarmQueue = false;
 
 	public Alarm() {
 		Machine.timer().setInterruptHandler(new Runnable() {
@@ -44,6 +45,7 @@ public class Alarm {
 			if (pair.getwakeTime() > Machine.timer().getTime()) {
 				pair.getCurrentThread().ready();
 				iter.remove();
+				removedFromAlarmQueue = true;
 			}
 		}
 		// for (Pair pair : blockedThreadList) {
@@ -120,6 +122,7 @@ public class Alarm {
 		}
 		boolean state = Machine.interrupt().disable();
 		long wakeTime = Machine.timer().getTime() + x;
+		KThread.currentThread().alarmWakeTime = wakeTime;
 		blockedThreadList.add(new Pair(KThread.currentThread(), wakeTime));
 		KThread.currentThread().sleep();
 		Machine.interrupt().restore(state);
@@ -135,7 +138,15 @@ public class Alarm {
 	 * 
 	 * @param thread the thread whose timer should be cancelled.
 	 */
-	public boolean cancel(KThread thread) {
-		return false;
+	public boolean cancel(KThread thread) { 
+		if (thread.alarmWakeTime != null){
+			boolean state = Machine.interrupt().disable();
+			thread.alarmWakeTime = null;
+			thread.ready();
+			Machine.interrupt().restore(state);
+			return true;
+		} else{
+			return false;
+		}
 	}
 }
