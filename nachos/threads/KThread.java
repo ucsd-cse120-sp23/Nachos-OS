@@ -203,7 +203,7 @@ public class KThread {
 		currentThread.status = statusFinished;
 
 		if (currentThread.callingThread != null) {
-			currentThread.ready();
+			currentThread.callingThread.ready();
 		}
 
 		sleep();
@@ -496,6 +496,8 @@ public class KThread {
 	private String name = "(unnamed thread)";
 
 	private Runnable target;
+
+	Long alarmWakeTime = null;
 
 	private TCB tcb;
 
