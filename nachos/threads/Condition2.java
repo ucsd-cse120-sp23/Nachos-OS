@@ -52,6 +52,7 @@ public class Condition2 {
 		boolean intStatus = Machine.interrupt().disable();
 		if (waitQueue.size() > 0) {
 			KThread kthread = waitQueue.remove(0);
+			ThreadedKernel.alarm.cancel(kthread);
 			kthread.ready();
 		}
 
@@ -86,19 +87,13 @@ public class Condition2 {
 		conditionLock.release();
 		waitQueue.add(KThread.currentThread());
 		
-		/////////////////////// Not very sure about this part
 		ThreadedKernel.alarm.waitUntil(timeout);
 		if (ThreadedKernel.alarm.removedFromAlarmQueue == true) {
 			waitQueue.remove(KThread.currentThread());
 		} 
-		//////////////////////////////////////////////////////////
-
-		///////////////////////TODO: cancel() in alarm()
+		//TODO: do we need alarm.cancel in wakeAll() too?
 		conditionLock.acquire();
 		Machine.interrupt().restore(intStatus);
-		// if wake before timeout, it will remove condition2 queue but not the queue in alarm
-		// if timeout, not removed from the waitqueue in condition2 [need implementation]
-		// TODO how to solve this conflict????
 	}
 
 	private Lock conditionLock;
