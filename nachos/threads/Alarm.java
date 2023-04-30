@@ -19,6 +19,7 @@ public class Alarm {
 	 * <b>Note</b>: Nachos will not function correctly with more than one alarm.
 	 */
 	List<Pair> blockedThreadList = new ArrayList<>();
+	boolean removedFromAlarmQueue = false;
 
 	public Alarm() {
 		Machine.timer().setInterruptHandler(new Runnable() {
@@ -48,6 +49,8 @@ public class Alarm {
 			Pair pair = iter.next();
 			if (pair.getwakeTime() > Machine.timer().getTime()) {
 				pair.getCurrentThread().ready();
+				iter.remove();
+				removedFromAlarmQueue = true;
 			}
 		}
 		// for (Pair pair : blockedThreadList) {
@@ -78,6 +81,30 @@ public class Alarm {
 		}
 	}
 
+	    // Add Alarm testing code to the Alarm class
+
+
+    // Implement more test methods here ...
+	public static void alarmTest1() {
+		int durations[] = {1000, 10*1000, 100*1000};
+		long t0, t1;
+	
+		for (int d : durations) {
+			t0 = Machine.timer().getTime();
+			ThreadedKernel.alarm.waitUntil (d);
+			t1 = Machine.timer().getTime();
+			System.out.println ("alarmTest1: waited for " + (t1 - t0) + " ticks");
+			System.out.println(d);
+		}
+		}
+
+    // Invoke Alarm.selfTest() from ThreadedKernel.selfTest()
+    public static void selfTest() {
+	alarmTest1();
+
+	// Invoke your other test methods here ...
+    }
+
 	/**
 	 * Put the current thread to sleep for at least <i>x</i> ticks, waking it up
 	 * in the timer interrupt handler. The thread must be woken up (placed in
@@ -105,6 +132,7 @@ public class Alarm {
 		}
 		boolean state = Machine.interrupt().disable();
 		long wakeTime = Machine.timer().getTime() + x;
+		KThread.currentThread().alarmWakeTime = wakeTime;
 		blockedThreadList.add(new Pair(KThread.currentThread(), wakeTime));
 		KThread.currentThread().sleep();
 		Machine.interrupt().restore(state);
@@ -121,7 +149,15 @@ public class Alarm {
 	 * 
 	 * @param thread the thread whose timer should be cancelled.
 	 */
-	public boolean cancel(KThread thread) {
-		return false;
+	public boolean cancel(KThread thread) { 
+		if (thread.alarmWakeTime != null){
+			boolean state = Machine.interrupt().disable();
+			thread.alarmWakeTime = null;
+			thread.ready();
+			Machine.interrupt().restore(state);
+			return true;
+		} else{
+			return false;
+		}
 	}
 }
