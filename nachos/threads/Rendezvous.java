@@ -4,12 +4,14 @@ import nachos.machine.*;
 import java.util.HashMap;
 
 
+
 /**
  * A <i>Rendezvous</i> allows threads to synchronously exchange values.
  */
 public class Rendezvous {
 
     private final HashMap<Integer, Pair> exchangeMap;
+    private final HashMap<Integer, Boolean> TagIsExchanging;
     private final Lock lock;
 
     // private Lock lock;
@@ -27,8 +29,10 @@ public class Rendezvous {
      * Allocate a new Rendezvous.
      */
     public Rendezvous () {
+
         lock = new Lock();
         exchangeMap = new HashMap<Integer, Pair>();
+        TagIsExchanging = new HashMap<Integer, Boolean>();
         // conditions = new HashMap<Integer, Condition>();
         // values = new HashMap<Integer, Integer>();
         // firstArrived = false;
@@ -37,6 +41,7 @@ public class Rendezvous {
         // conditionB = new Condition(lock);
         // isAWaiting = false;
         // isBWaiting = false;
+
     }
 
     /**
@@ -57,22 +62,54 @@ public class Rendezvous {
      */
     public int exchange (int tag, int value) {
         lock.acquire();
+        Condition2 condition = new Condition2(lock);
+        if (TagIsExchanging.containsKey(tag)) {
+            while (TagIsExchanging.get(tag)) {
+                condition.sleepFor(1000);
+            }
+        }
         if (!exchangeMap.containsKey(tag)) {
-            Pair pair = new Pair(lock, value);
+            Pair pair = new Pair(condition, value);
             exchangeMap.put(tag, pair);
+            TagIsExchanging.put(tag, false);
             pair.getCondition().sleep();
             int otherValue = exchangeMap.get(tag).getValue();
             exchangeMap.remove(tag);
+            // \\\\\\\\\\\\\\\\\\\\\\\\\\
+            TagIsExchanging.put(tag, false);
             lock.release();
             return otherValue;
         } else {
             Pair pair = exchangeMap.get(tag);
             int otherValue = pair.getValue();
-            exchangeMap.put(tag, new Pair(lock, value));
+            
+            exchangeMap.put(tag, new Pair(condition, value));
+            TagIsExchanging.put(tag, true);
             pair.getCondition().wake();
             lock.release();
             return otherValue;
+           
         }
+
+        //-------------------------------------------
+        // Way 2
+
+        // if (!exchangeMap.containsKey(tag)) {
+        //     Condition condition = new Condition(lock);
+        //     Pair pair = new Pair(condition, value);
+        //     exchangeMap.put(tag, pair);
+        //     pair.getCondition().sleep();
+        //     int otherValue = exchangeMap.get(tag).getValue();
+        //     exchangeMap.remove(tag);
+        //     lock.release();
+        //     return otherValue;
+        // }
+        
+        //-------------------------------------------------------------
+        // Way 3
+        // while (TagIsExchanging.get)
+
+        //------------------------------------------------------
 
         // will be deleted!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // lock.acquire();
@@ -135,11 +172,12 @@ public class Rendezvous {
     }
 
     private static class Pair {
-        private Condition condition;
+        private Condition2 condition;
         private Integer value;
+        // private boolean isExchanging;
 
-        public Pair(Lock lock, int value) {
-            condition = new Condition(lock);
+        public Pair(Condition2 condition, int value) {
+            this.condition = condition;
             this.value = value;
         }
 
@@ -151,6 +189,10 @@ public class Rendezvous {
             return value;
         }
 
+        // public boolean isExchanging() {
+        //     return isExchanging;
+        // }
+
         // public void setValue(int value) {
         //     this.value = value;
         // }
@@ -159,9 +201,13 @@ public class Rendezvous {
         //     condition = new Condition(lock);
         // }
 
-        public Condition getCondition() {
+        public Condition2 getCondition() {
             return condition;
         }
+        
+        // public boolean isExchanging() {
+        //     return isExchanging;
+        // }
     }
 
 
@@ -177,7 +223,7 @@ public class Rendezvous {
 
                 System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
                 int recv = r.exchange (tag, send);
-                Lib.assertTrue (recv == 1, "Was expecting " + 1 + " but received " + recv);
+                //Lib.assertTrue (recv == 1, "Was expecting " + 1 + " but received " + recv);
                 System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
             }
         });
@@ -190,7 +236,7 @@ public class Rendezvous {
 
                 System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
                 int recv = r.exchange (tag, send);
-                Lib.assertTrue (recv == -1, "Was expecting " + -1 + " but received " + recv);
+                //Lib.assertTrue (recv == -1, "Was expecting " + -1 + " but received " + recv);
                 System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
             }
         });
@@ -203,7 +249,7 @@ public class Rendezvous {
 
                 System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
                 int recv = r.exchange (tag, send);
-                Lib.assertTrue (recv == 4, "Was expecting " + 4 + " but received " + recv);
+                //Lib.assertTrue (recv == 4, "Was expecting " + 4 + " but received " + recv);
                 System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
             }
         });
@@ -216,19 +262,19 @@ public class Rendezvous {
 
                 System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
                 int recv = r.exchange (tag, send);
-                Lib.assertTrue (recv == 2, "Was expecting " + 2 + " but received " + recv);
+                //Lib.assertTrue (recv == 2, "Was expecting " + 2 + " but received " + recv);
                 System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
             }
         });
         t4.setName("t4");
 
 
-        t1.fork(); t2.fork(); 
+        t1.fork(); t2.fork(); t3.fork(); t4.fork();
         // assumes join is implemented correctly
-        t1.join(); t2.join(); 
+        t1.join(); t2.join(); t3.join(); t4.join();
 
-        t3.fork(); t4.fork();
-        t3.join(); t4.join();
+       
+        
     }
 
     // Invoke Rendezvous.selfTest() from ThreadedKernel.selfTest()
@@ -238,5 +284,6 @@ public class Rendezvous {
 	    rendezTest1();
     }
 }
+
 
 

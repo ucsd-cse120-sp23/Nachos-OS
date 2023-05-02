@@ -8,6 +8,7 @@ import java.util.Random;
 import java.util.Iterator;
 
 
+
 /**
  * Uses the hardware timer to provide preemption, and to allow threads to sleep
  * until a certain time.
@@ -20,7 +21,8 @@ public class Alarm {
 	 * <p>
 	 * <b>Note</b>: Nachos will not function correctly with more than one alarm.
 	 */
-	List<Pair> blockedThreadList = new ArrayList<Pair>();
+
+	List<Pair> blockedThreadList = new ArrayList<>();
 	boolean removedFromAlarmQueue = false;
 
 	public Alarm() {
@@ -49,7 +51,7 @@ public class Alarm {
 		Iterator<Pair> iter = blockedThreadList.iterator();
 		while (iter.hasNext()) {
 			Pair pair = iter.next();
-			if (pair.getwakeTime() < Machine.timer().getTime()) {
+			if (pair.getwakeTime() <= Machine.timer().getTime()) {
 				pair.getCurrentThread().ready();
 				iter.remove();
 				removedFromAlarmQueue = true;
@@ -82,11 +84,6 @@ public class Alarm {
 		}
 	}
 
-
-
-
-
-
 	/**
 	 * Put the current thread to sleep for at least <i>x</i> ticks, waking it up
 	 * in the timer interrupt handler. The thread must be woken up (placed in
@@ -100,6 +97,7 @@ public class Alarm {
 	 * @see nachos.machine.Timer#getTime()
 	 */
 	public void waitUntil(long x) {
+
 		// Original Code
 		// for now, cheat just to get something working (busy waiting is bad)
 		// long wakeTime = Machine.timer().getTime() + x;
@@ -115,11 +113,10 @@ public class Alarm {
 		boolean state = Machine.interrupt().disable();
 		long wakeTime = Machine.timer().getTime() + x;
 		KThread.currentThread().alarmWakeTime = wakeTime;
-		System.out.println("KThread.currentThread().alarmWakeTime: " + KThread.currentThread().alarmWakeTime);
+		// System.out.println("KThread.currentThread().alarmWakeTime: " + KThread.currentThread().alarmWakeTime);
 		blockedThreadList.add(new Pair(KThread.currentThread(), wakeTime));
 		KThread.currentThread().sleep();
 		Machine.interrupt().restore(state);
-
 	}
 
 	/**
@@ -133,9 +130,9 @@ public class Alarm {
 	 * @param thread the thread whose timer should be cancelled.
 	 */
 	public boolean cancel(KThread thread) { 
-		if (thread.alarmWakeTime != null){
+		if (thread.alarmWakeTime != -1){
 			boolean state = Machine.interrupt().disable();
-			thread.alarmWakeTime = null;
+			thread.alarmWakeTime = -1;
 			thread.ready();
 			Machine.interrupt().restore(state);
 			return true;
@@ -286,7 +283,5 @@ public class Alarm {
 		alarmTest2_WAIT_random_duration(10, 100000);
 		// alarmTest4_WAIT_long_duration();
 		alarmTest4_Thread_cancel(5, 6, 10000000);
-
-
 	}
 }

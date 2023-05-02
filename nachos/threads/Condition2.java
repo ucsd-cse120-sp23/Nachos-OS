@@ -2,6 +2,7 @@ package nachos.threads;
 
 import nachos.machine.*;
 import java.util.ArrayList;
+import java.util.LinkedList;
 
 /**
  * An implementation of condition variables that disables interrupt()s for
@@ -52,8 +53,10 @@ public class Condition2 {
 		boolean intStatus = Machine.interrupt().disable();
 		if (waitQueue.size() > 0) {
 			KThread kthread = waitQueue.remove(0);
-			ThreadedKernel.alarm.cancel(kthread);
-			kthread.ready();
+			boolean cancelStatus = ThreadedKernel.alarm.cancel(kthread);
+			if (!cancelStatus) {
+				kthread.ready();
+			}
 		}
 
 		Machine.interrupt().restore(intStatus);
@@ -101,12 +104,13 @@ public class Condition2 {
 
 
 	// Test for condition2
-	    // Place Condition2 testing code in the Condition2 class.
+	// Place Condition2 testing code in the Condition2 class.
 
     // Example of the "interlock" pattern where two threads strictly
     // alternate their execution with each other using a condition
     // variable.  (Also see the slide showing this pattern at the end
     // of Lecture 6.)
+
 
 	private static void sleepForTest1 () {
 		Lock lock = new Lock();
@@ -121,11 +125,44 @@ public class Condition2 {
 		System.out.println (KThread.currentThread().getName() +
 					" woke up, slept for " + (t1 - t0) + " ticks");
 		lock.release();
-		}
-	
-	public static void selfTest() {
-		sleepForTest1();
 	}
+
+	private static void sleepForTest2 () {
+		final Lock lock = new Lock();
+		final Condition2 cv = new Condition2(lock);
+	
+		lock.acquire();
+		long t0 = Machine.timer().getTime();
+		System.out.println (KThread.currentThread().getName() + " sleeping");
+		KThread child1 = new KThread( new Runnable () {
+			public void run() {
+				System.out.println("I (heart) Nachos!");
+			}
+			});
+		child1.setName("child1").fork();
+
+		KThread child2 = new KThread( new Runnable () {
+			public void run() {
+				Lock lock2 = new Lock();
+				Condition2 cv2 = new Condition2(lock2);
+				cv2.sleepFor(2000000);
+			}
+			});
+		child2.setName("child2").fork();
+
+
+
+		//TODO how to implement wake()
+		cv.sleepFor(2000);
+
+		
+		long t1 = Machine.timer().getTime();
+		System.out.println (KThread.currentThread().getName() +
+					" woke up, slept for " + (t1 - t0) + " ticks");
+		lock.release();
+	}
+	
+
 
     private static class InterlockTest {
         private static Lock lock;
@@ -169,9 +206,67 @@ public class Condition2 {
         }
     }
 
+	private static void cvTest5() {
+        final Lock lock = new Lock();
+        // final Condition empty = new Condition(lock);
+        final Condition2 empty = new Condition2(lock);
+        final LinkedList<Integer> list = new LinkedList<>();
+
+        KThread consumer = new KThread( new Runnable () {
+                public void run() {
+                    lock.acquire();
+                    while(list.isEmpty()){
+                        empty.sleep();
+                    }
+                    Lib.assertTrue(list.size() == 5, "List should have 5 values.");
+                    while(!list.isEmpty()) {
+                        // context swith for the fun of it
+                        KThread.currentThread().yield();
+                        System.out.println("Removed " + list.removeFirst());
+                    }
+                    lock.release();
+                }
+            });
+
+        KThread producer = new KThread( new Runnable () {
+                public void run() {
+                    lock.acquire();
+                    for (int i = 0; i < 5; i++) {
+                        list.add(i);
+                        System.out.println("Added " + i);
+                        // context swith for the fun of it
+                        KThread.currentThread().yield();
+                    }
+                    empty.wake();
+                    lock.release();
+                }
+            });
+
+        consumer.setName("Consumer");
+        producer.setName("Producer");
+        consumer.fork();
+        producer.fork();
+
+        // We need to wait for the consumer and producer to finish,
+        // and the proper way to do so is to join on them.  For this
+        // to work, join must be implemented.  If you have not
+        // implemented join yet, then comment out the calls to join
+        // and instead uncomment the loop with yield; the loop has the
+        // same effect, but is a kludgy way to do it.
+        consumer.join();
+        producer.join();
+        //for (int i = 0; i < 50; i++) { KThread.currentThread().yield(); }
+    }
+
     // Invoke Condition2.selfTest() from ThreadedKernel.selfTest()
 
     // public static void selfTest() {
     //     new InterlockTest();
     // }
+
+
+	public static void selfTest() {
+		sleepForTest1();
+		cvTest5();
+	}
 }

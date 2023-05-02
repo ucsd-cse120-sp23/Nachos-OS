@@ -497,7 +497,8 @@ public class KThread {
 
 	private Runnable target;
 
-	Long alarmWakeTime = null;
+	// \\\\\\\Can it be -1?
+	long alarmWakeTime = -1;
 
 	private TCB tcb;
 
@@ -521,6 +522,8 @@ public class KThread {
 	private static KThread idleThread = null;
 
 
+
 	// What we added
 	// private Queue
+
 }
