@@ -122,9 +122,6 @@ public class Rendezvous {
             this.value = value;
         }
 
-        public boolean isFull() {
-            return value != null;
-        }
 
         public Integer getValue() {
             return value;
@@ -206,6 +203,20 @@ public class Rendezvous {
 
     public static void rendezTest2() {
         final Rendezvous r = new Rendezvous();
+        final Rendezvous z = new Rendezvous();
+         KThread t100 = new KThread( new Runnable () {
+            public void run() {
+                int tag = 0;
+                int send = -100;
+
+                System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
+                int recv = z.exchange (tag, send);
+                //Lib.assertTrue (recv == 1, "Was expecting " + 1 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
+            }
+        });
+        t100.setName("t100");
+
 
         KThread t1 = new KThread( new Runnable () {
             public void run() {
@@ -233,6 +244,19 @@ public class Rendezvous {
         });
         t2.setName("t2");
 
+         KThread t200 = new KThread( new Runnable () {
+            public void run() {
+                int tag = 1;
+                int send = 100;
+
+                System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
+                int recv = z.exchange (tag, send);
+                //Lib.assertTrue (recv == -1, "Was expecting " + -1 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
+            }
+        });
+        t200.setName("t200");
+
         KThread t3 = new KThread( new Runnable () {
             public void run() {
                 int tag = 0;
@@ -245,6 +269,19 @@ public class Rendezvous {
             }
         });
         t3.setName("t3");
+
+         KThread t300 = new KThread( new Runnable () {
+            public void run() {
+                int tag = 0;
+                int send = 200;
+
+                System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
+                int recv = z.exchange (tag, send);
+                //Lib.assertTrue (recv == 4, "Was expecting " + 4 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
+            }
+        });
+        t300.setName("t300");
 
         KThread t4 = new KThread( new Runnable () {
             public void run() {
@@ -259,10 +296,23 @@ public class Rendezvous {
         });
         t4.setName("t4");
 
+        KThread t400 = new KThread( new Runnable () {
+            public void run() {
+                int tag = 1;
+                int send = 400;
 
-        t1.fork(); t2.fork(); t3.fork(); t4.fork();
+                System.out.println ("Thread " + KThread.currentThread().getName() + " exchanging " + send);
+                int recv = z.exchange (tag, send);
+                //Lib.assertTrue (recv == 2, "Was expecting " + 2 + " but received " + recv);
+                System.out.println ("Thread " + KThread.currentThread().getName() + " received " + recv);
+            }
+        });
+        t400.setName("t400");
+
+
+        t1.fork(); t100.fork(); t2.fork(); t3.fork(); t4.fork(); t200.fork(); t300.fork(); t400.fork();
         // assumes join is implemented correctly
-        t1.join(); t2.join(); t3.join(); t4.join();
+        t1.join(); t100.join(); t2.join(); t3.join(); t4.join(); t200.join(); t300.join(); t400.join();
 
        
         
@@ -272,7 +322,7 @@ public class Rendezvous {
 
     public static void selfTest() {
 	    // place calls to your Rendezvous tests that you implement here
-	    rendezTest1();
+	   
         rendezTest2();
     }
 }

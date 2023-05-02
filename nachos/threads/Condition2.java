@@ -206,41 +206,42 @@ public class Condition2 {
         }
     }
 
-	private static void cvTest5() {
+	private static void cvTestN(int numProduct) {
+		final int numProduct1 = numProduct;
         final Lock lock = new Lock();
         // final Condition empty = new Condition(lock);
         final Condition2 empty = new Condition2(lock);
         final LinkedList<Integer> list = new LinkedList<>();
 
         KThread consumer = new KThread( new Runnable () {
-                public void run() {
-                    lock.acquire();
-                    while(list.isEmpty()){
-                        empty.sleep();
-                    }
-                    Lib.assertTrue(list.size() == 5, "List should have 5 values.");
-                    while(!list.isEmpty()) {
-                        // context swith for the fun of it
-                        KThread.currentThread().yield();
-                        System.out.println("Removed " + list.removeFirst());
-                    }
-                    lock.release();
-                }
-            });
+			public void run() {
+				lock.acquire();
+				while(list.isEmpty()){
+					empty.sleep();
+				}
+				Lib.assertTrue(list.size() == numProduct1, "List should have $(num1) values.");
+				while(!list.isEmpty()) {
+					// context swith for the fun of it
+					KThread.currentThread().yield();
+					System.out.println("Removed " + list.removeFirst());
+				}
+				lock.release();
+			}
+		});
 
         KThread producer = new KThread( new Runnable () {
-                public void run() {
-                    lock.acquire();
-                    for (int i = 0; i < 5; i++) {
-                        list.add(i);
-                        System.out.println("Added " + i);
-                        // context swith for the fun of it
-                        KThread.currentThread().yield();
-                    }
-                    empty.wake();
-                    lock.release();
-                }
-            });
+			public void run() {
+				lock.acquire();
+				for (int i = 0; i < numProduct1; i++) {
+					list.add(i);
+					System.out.println("Added " + i);
+					// context swith for the fun of it
+					KThread.currentThread().yield();
+				}
+				empty.wake();
+				lock.release();
+			}
+		});
 
         consumer.setName("Consumer");
         producer.setName("Producer");
@@ -258,6 +259,59 @@ public class Condition2 {
         //for (int i = 0; i < 50; i++) { KThread.currentThread().yield(); }
     }
 
+
+	private static void cvTestN2(int numProduct) {
+		final int numProduct1 = numProduct;
+        final Lock lock = new Lock();
+        // final Condition empty = new Condition(lock);
+        final Condition2 empty = new Condition2(lock);
+        final LinkedList<Integer> list = new LinkedList<>();
+
+        KThread consumer = new KThread( new Runnable () {
+			public void run() {
+				lock.acquire();
+				while(list.isEmpty()){
+					empty.sleep();
+				}
+				Lib.assertTrue(list.size() == numProduct1, "List should have $(num1) values.");
+				while(!list.isEmpty()) {
+					// context swith for the fun of it
+					KThread.currentThread().yield();
+					System.out.println("Removed " + list.removeFirst());
+				}
+				lock.release();
+			}
+		});
+
+        KThread producer = new KThread( new Runnable () {
+			public void run() {
+				lock.acquire();
+				for (int i = 0; i < numProduct1; i++) {
+					list.add(i);
+					System.out.println("Added " + i);
+					// context swith for the fun of it
+					KThread.currentThread().yield();
+				}
+				empty.wake();
+				lock.release();
+			}
+		});
+
+        consumer.setName("Consumer");
+        producer.setName("Producer");
+        consumer.fork();
+        producer.fork();
+
+        // We need to wait for the consumer and producer to finish,
+        // and the proper way to do so is to join on them.  For this
+        // to work, join must be implemented.  If you have not
+        // implemented join yet, then comment out the calls to join
+        // and instead uncomment the loop with yield; the loop has the
+        // same effect, but is a kludgy way to do it.
+        consumer.join();
+        producer.join();
+        //for (int i = 0; i < 50; i++) { KThread.currentThread().yield(); }
+    }
     // Invoke Condition2.selfTest() from ThreadedKernel.selfTest()
 
     // public static void selfTest() {
@@ -267,7 +321,7 @@ public class Condition2 {
 
 	public static void selfTest() {
 		sleepForTest1();
-		cvTest5();
+		cvTestN(100);
 
 		InterlockTest InterlockTest1 = new InterlockTest();
 		
