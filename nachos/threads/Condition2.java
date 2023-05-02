@@ -268,5 +268,8 @@ public class Condition2 {
 	public static void selfTest() {
 		sleepForTest1();
 		cvTest5();
+
+		InterlockTest InterlockTest1 = new InterlockTest();
+		
 	}
 }
