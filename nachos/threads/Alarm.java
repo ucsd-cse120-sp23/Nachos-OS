@@ -4,7 +4,9 @@ import nachos.machine.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 import java.util.Iterator;
+
 
 /**
  * Uses the hardware timer to provide preemption, and to allow threads to sleep
@@ -18,7 +20,7 @@ public class Alarm {
 	 * <p>
 	 * <b>Note</b>: Nachos will not function correctly with more than one alarm.
 	 */
-	List<Pair> blockedThreadList = new ArrayList<>();
+	List<Pair> blockedThreadList = new ArrayList<Pair>();
 	boolean removedFromAlarmQueue = false;
 
 	public Alarm() {
@@ -37,7 +39,7 @@ public class Alarm {
 	 */
 	public void timerInterrupt() {
 
-		//Original Code
+		// Original Code
 		// KThread.currentThread().yield();
 
 		//New Implementation
@@ -47,7 +49,7 @@ public class Alarm {
 		Iterator<Pair> iter = blockedThreadList.iterator();
 		while (iter.hasNext()) {
 			Pair pair = iter.next();
-			if (pair.getwakeTime() > Machine.timer().getTime()) {
+			if (pair.getwakeTime() < Machine.timer().getTime()) {
 				pair.getCurrentThread().ready();
 				iter.remove();
 				removedFromAlarmQueue = true;
@@ -58,7 +60,6 @@ public class Alarm {
 		// pair.getCurrentThread().ready();
 		// }
 		// }
-
 
 		KThread.currentThread().yield();
 	}
@@ -81,29 +82,10 @@ public class Alarm {
 		}
 	}
 
-	    // Add Alarm testing code to the Alarm class
 
 
-    // Implement more test methods here ...
-	public static void alarmTest1() {
-		int durations[] = {1000, 10*1000, 100*1000};
-		long t0, t1;
-	
-		for (int d : durations) {
-			t0 = Machine.timer().getTime();
-			ThreadedKernel.alarm.waitUntil (d);
-			t1 = Machine.timer().getTime();
-			System.out.println ("alarmTest1: waited for " + (t1 - t0) + " ticks");
-			System.out.println(d);
-		}
-		}
 
-    // Invoke Alarm.selfTest() from ThreadedKernel.selfTest()
-    public static void selfTest() {
-	alarmTest1();
 
-	// Invoke your other test methods here ...
-    }
 
 	/**
 	 * Put the current thread to sleep for at least <i>x</i> ticks, waking it up
@@ -156,8 +138,154 @@ public class Alarm {
 			thread.ready();
 			Machine.interrupt().restore(state);
 			return true;
-		} else{
-			return false;
+		} 
+		
+		return false;
+	}
+
+	// Add Alarm testing code to the Alarm class
+	// Implement more test methods here ...
+
+	// Implement more test methods here ...
+	public static void alarmTest1_single_Thread() {
+		int durations[] = {0, 1, 999, 1000, 1001,  10*10000, 100*100000};
+		long t0, t1;
+	
+		for (int i = 0; i < durations.length; i++) {
+			t0 = Machine.timer().getTime();
+			ThreadedKernel.alarm.waitUntil (durations[i]);
+			t1 = Machine.timer().getTime();
+			System.out.println("alarmTest2-"+ i + " EXPECTED at least " + durations[i] + " ticks");
+			System.out.println("alarmTest2-"+ i +"  waited for " + (t1 - t0) + " ticks");
+			// System.out.println(d);
+
+			Lib.assertTrue ((t1 - t0) >= durations[i]);
 		}
+
+		System.out.println();
+	}
+
+	public static void alarmTest2_WAIT_random_duration(int num_Duration, int range_Duration) {
+
+		ArrayList<Integer> durations = new ArrayList<Integer>(); 
+		long t0, t1;
+
+		Random rn = new Random();
+
+		for (int i=0; i < num_Duration; i++) {
+			Integer duration = new Integer(rn.nextInt(range_Duration));
+			durations.add(duration);
+		}
+
+		Iterator<Integer> it_durations = durations.iterator();
+
+		int i = 0;
+
+		while (it_durations.hasNext()) {
+			Integer currDuration = it_durations.next();
+			t0 = Machine.timer().getTime();
+			ThreadedKernel.alarm.waitUntil (currDuration);
+			t1 = Machine.timer().getTime();
+			System.out.println("alarmTest3_duration_random-"+ i + " EXPECTED at least " + currDuration.intValue() + " ticks");
+			System.out.println("alarmTest3_duration_random-"+ i +"  waited for " + (t1 - t0) + " ticks");
+			Lib.assertTrue ((t1 - t0) >= currDuration.intValue());
+			i++;
+		}
+
+		System.out.println();
+	
+	}
+
+	public static void alarmTest3_single_Thread_WAIT_long_duration(){
+		int durations[] = {2147483647};
+
+		// int durations[] = {0, 1, 999, 1001, 2147483647};
+		long t0, t1;
+	
+		for (int i = 0; i < durations.length; i++) {
+			t0 = Machine.timer().getTime();
+			ThreadedKernel.alarm.waitUntil (durations[i]);
+			t1 = Machine.timer().getTime();
+			System.out.println("alarmTest4-"+ i + " EXPECTED at least " + durations[i] + " ticks");
+			System.out.println("alarmTest4-"+ i +"  waited for " + (t1 - t0) + " ticks");
+			// System.out.println(d);
+
+			Lib.assertTrue ((t1 - t0) >= durations[i]);
+		}
+
+		System.out.println();
+	}
+
+	public static void alarmTest4_Thread_cancel(int numThreadedKernel, int numDuration, int range_Duration){
+
+		ArrayList<ThreadedKernel> thread_arrlist1 = new ArrayList<ThreadedKernel>();
+
+		for (int i=0; i<numThreadedKernel; i++) {
+			ThreadedKernel thKernl = new ThreadedKernel();
+			thread_arrlist1.add(thKernl);
+		}
+
+		ArrayList<Integer> durations = new ArrayList<Integer>(); 
+		
+		Random rn = new Random();
+
+		for (int i=0; i < numDuration; i++) {
+			Integer duration = new Integer(rn.nextInt(range_Duration));
+			durations.add(duration);
+		}
+		
+		Iterator<Integer> it_durations = durations.iterator();
+		Iterator<ThreadedKernel> it_thread_arrlist1 =  thread_arrlist1.iterator();
+		Integer currDuration;
+		ThreadedKernel currThread;
+
+		while (it_durations.hasNext()) {
+
+			currDuration = it_durations.next();
+
+
+
+			if (!it_thread_arrlist1.hasNext()) {
+				it_thread_arrlist1 = thread_arrlist1.iterator();
+
+			}
+
+			currThread = it_thread_arrlist1.next();
+
+			boolean state = Machine.interrupt().disable();
+			currThread.alarm.waitUntil(currDuration);
+
+			//System.out.println("alarmTest5-1");
+			Machine.interrupt().restore(state);
+			
+			//System.out.println("alarmTest5-2");
+			
+			boolean test_cancel = ThreadedKernel.alarm.cancel(currThread);
+			
+			System.out.println("Cancelled - " + test_cancel);
+			
+			System.out.println("Removed from alarm queue - " +ThreadedKernel.alarm.removedFromAlarmQueue);
+
+
+
+		}
+
+
+		
+	}
+
+	// public static void alarmTest5_WAIT_
+		
+	
+
+	// Invoke Alarm.selfTest() from ThreadedKernel.selfTest()
+	public static void selfTest() {
+		// Invoke your other test methods here ...
+		alarmTest1_single_Thread();
+		alarmTest2_WAIT_random_duration(10, 100000);
+		// alarmTest4_WAIT_long_duration();
+		alarmTest4_Thread_cancel(5, 6, 10000000);
+
+
 	}
 }
