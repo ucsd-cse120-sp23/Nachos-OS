@@ -115,6 +115,7 @@ public class Alarm {
 		boolean state = Machine.interrupt().disable();
 		long wakeTime = Machine.timer().getTime() + x;
 		KThread.currentThread().alarmWakeTime = wakeTime;
+		System.out.println("KThread.currentThread().alarmWakeTime: " + KThread.currentThread().alarmWakeTime);
 		blockedThreadList.add(new Pair(KThread.currentThread(), wakeTime));
 		KThread.currentThread().sleep();
 		Machine.interrupt().restore(state);
@@ -216,13 +217,13 @@ public class Alarm {
 		System.out.println();
 	}
 
-	public static void alarmTest4_Thread_cancel(int numThreadedKernel, int numDuration, int range_Duration){
+	public static void alarmTest4_Thread_cancel(int numKThread, int numDuration, int range_Duration){
 
-		ArrayList<ThreadedKernel> thread_arrlist1 = new ArrayList<ThreadedKernel>();
+		ArrayList<KThread> thread_arrlist1 = new ArrayList<KThread>();
 
-		for (int i=0; i<numThreadedKernel; i++) {
-			ThreadedKernel thKernl = new ThreadedKernel();
-			thread_arrlist1.add(thKernl);
+		for (int i=0; i<numKThread; i++) {
+			KThread thread = new KThread();
+			thread_arrlist1.add(thread);
 		}
 
 		ArrayList<Integer> durations = new ArrayList<Integer>(); 
@@ -230,14 +231,14 @@ public class Alarm {
 		Random rn = new Random();
 
 		for (int i=0; i < numDuration; i++) {
-			Integer duration = new Integer(rn.nextInt(range_Duration));
+			Integer duration = new Integer(100+rn.nextInt(range_Duration));
 			durations.add(duration);
 		}
 		
 		Iterator<Integer> it_durations = durations.iterator();
-		Iterator<ThreadedKernel> it_thread_arrlist1 =  thread_arrlist1.iterator();
+		Iterator<KThread> it_thread_arrlist1 =  thread_arrlist1.iterator();
 		Integer currDuration;
-		ThreadedKernel currThread;
+		KThread currThread;
 
 		while (it_durations.hasNext()) {
 
@@ -253,7 +254,7 @@ public class Alarm {
 			currThread = it_thread_arrlist1.next();
 
 			boolean state = Machine.interrupt().disable();
-			currThread.alarm.waitUntil(currDuration);
+			ThreadedKernel.alarm.waitUntil(currDuration);
 
 			//System.out.println("alarmTest5-1");
 			Machine.interrupt().restore(state);
