@@ -109,66 +109,7 @@ public class Rendezvous {
         // Way 3
         // while (TagIsExchanging.get)
 
-        //------------------------------------------------------
-
-        // will be deleted!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        // lock.acquire();
-        // //first get the condition that corresponds to specific tag
-        // Condition condition = conditions.get(tag); 
-        // if (condition == null) {
-        //     condition = new Condition(lock);
-        //     conditions.put(tag, condition);
-        //     values.put(tag, value);
-        // }
-
-        // if (!firstArrived) {
-        //     firstArrived = true;
-        //     firstValue = value;
-        //     while(!firstArrived) {
-        //         condition.sleep();
-        //     }
-        //     Integer secondValue = values.get(tag);
-        //     values.put(tag, null);
-        //     firstValue = null;
-        //     firstArrived = false;
-        //     condition.wake();
-        //     lock.release();
-        //     return secondValue;
-        // } else {
-        //     Integer secondValue = value;
-        //     values.put(tag, secondValue);
-        //     firstArrived = false;
-        //     condition.wake();
-        //     lock.release();
-        //     return firstValue;
-        // }
-
-
-        // if (!isAWaiting) {
-        //     valueA = value;
-        //     isAWaiting = true;
-        //     while(!isBWaiting) {
-        //         conditionA.sleep();
-        //     }
-        //     int result = valueB;
-        //     valueB = null;                     //it cannot use data structures other than locks and condition variables to store references to threads.
-        //     isBWaiting = false;                
-        //     conditionB.wake();
-        //     lock.release();
-        //     return result;
-        // } else {
-        //     valueB = value;
-        //     isBWaiting = true;
-        //     while(!isAWaiting) {
-        //         conditionB.sleep();
-        //     }
-        //     int result = valueA;
-        //     valueA = null;
-        //     isAWaiting = false;
-        //     conditionA.wake();
-        //     lock.release();
-        //     return result;
-        // }
+        
     }
 
     private static class Pair {
@@ -189,25 +130,11 @@ public class Rendezvous {
             return value;
         }
 
-        // public boolean isExchanging() {
-        //     return isExchanging;
-        // }
-
-        // public void setValue(int value) {
-        //     this.value = value;
-        // }
-
-        // public void setCondition(Lock lock) {
-        //     condition = new Condition(lock);
-        // }
 
         public Condition2 getCondition() {
             return condition;
         }
         
-        // public boolean isExchanging() {
-        //     return isExchanging;
-        // }
     }
 
 
