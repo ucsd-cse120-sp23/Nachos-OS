@@ -554,7 +554,11 @@ public class KThread {
         // }
 
 		// expected to cause assertError, since child2 and child3 join child1
-        child1.join();
+        // child1.join();
+
+		// either of the following causes assertError
+		// child2.join();
+		// child3.join();
 
         System.out.println("After joining, child1 should be finished.");
         System.out.println("is it? " + (child1.status == statusFinished));
