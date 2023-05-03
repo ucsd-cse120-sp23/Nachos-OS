@@ -92,6 +92,7 @@ public class Condition2 {
 		
 		ThreadedKernel.alarm.waitUntil(timeout);
 		if (ThreadedKernel.alarm.removedFromAlarmQueue == true) {
+			ThreadedKernel.alarm.removedFromAlarmQueue = false;
 			waitQueue.remove(KThread.currentThread());
 		} 
 		//TODO: do we need alarm.cancel in wakeAll() too?
