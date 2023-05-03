@@ -287,6 +287,7 @@ public class KThread {
 		Lib.assertTrue(this != currentThread); // a thread cannot join itself
 		//Lib.assertTrue(Machine.interrupt().disabled());
 		// check if this method has already been called once
+		System.out.println(this.name + ".hasJoin: "+this.hasJoin);
 		Lib.assertTrue(!this.hasJoin);
 		this.hasJoin = true; // TODO one join on multiple; multiple join on one
 
@@ -517,15 +518,59 @@ public class KThread {
 		private int which;
 	}
 
+	private static void joinTest2 () {
+        final KThread child1 = new KThread( new Runnable () {
+            public void run() {
+                System.out.println("child 1: I (heart) Nachos!");
+            }
+        });
+        child1.setName("child1").fork();
+
+
+        KThread child2 = new KThread( new Runnable () {
+            public void run() {
+                System.out.println("child 2: I (heart) Nachos!");
+                child1.join();
+            }
+        });
+        child2.setName("child2").fork();
+
+        KThread child3 = new KThread( new Runnable () {
+            public void run() {
+                System.out.println("child3: I (heart) Nachos!");
+                child1.join();
+            }
+        });
+		child3.setName("child3").fork();
+		
+        // child3.setName("child2").fork();
+        // We want the child to finish before we call join.  Although
+        // our solutions to the problems cannot busy wait, our test
+        // programs can!
+
+        // for (int i = 0; i < 5; i++) {
+        //     System.out.println ("busy...");
+        //     KThread.currentThread().yield();
+        // }
+
+		// expected to cause assertError, since child2 and child3 join child1
+        child1.join();
+
+        System.out.println("After joining, child1 should be finished.");
+        System.out.println("is it? " + (child1.status == statusFinished));
+        // Lib.assertTrue((child1.status == statusFinished), " Expected child1 to be finished.");
+    }
+
 	/**
 	 * Tests whether this module is working.
 	 */
 	public static void selfTest() {
 		Lib.debug(dbgThread, "Enter KThread.selfTest");
 
-		new KThread(new PingTest(1)).setName("forked thread").fork();
-		new PingTest(0).run();
-		joinTest1();
+		// new KThread(new PingTest(1)).setName("forked thread").fork();
+		// new PingTest(0).run();
+		// joinTest1();
+		joinTest2();
 	}
 
 }

@@ -92,6 +92,7 @@ public class Condition2 {
 		
 		ThreadedKernel.alarm.waitUntil(timeout);
 		if (ThreadedKernel.alarm.removedFromAlarmQueue == true) {
+			ThreadedKernel.alarm.removedFromAlarmQueue = false;
 			waitQueue.remove(KThread.currentThread());
 		} 
 		//TODO: do we need alarm.cancel in wakeAll() too?
@@ -144,13 +145,11 @@ public class Condition2 {
 		KThread child2 = new KThread( new Runnable () {
 			public void run() {
 				Lock lock2 = new Lock();
-				Condition2 cv2 = new Condition2(lock2);
+				Condition2 cv2 = new Condition2(lock);
 				cv2.sleepFor(2000000);
 			}
 			});
 		child2.setName("child2").fork();
-
-
 
 		//TODO how to implement wake()
 		cv.sleepFor(2000);
@@ -321,7 +320,8 @@ public class Condition2 {
 
 	public static void selfTest() {
 		sleepForTest1();
-		cvTestN(100);
+		sleepForTest2();
+		// cvTestN(100);
 
 		InterlockTest InterlockTest1 = new InterlockTest();
 		
