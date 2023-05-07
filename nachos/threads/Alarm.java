@@ -283,5 +283,6 @@ public class Alarm {
 		alarmTest2_WAIT_random_duration(10, 100000);
 		// alarmTest4_WAIT_long_duration();
 		alarmTest4_Thread_cancel(5, 6, 10000000);
+		System.out.println();
 	}
 }
