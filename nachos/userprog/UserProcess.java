@@ -374,6 +374,29 @@ public class UserProcess {
 		return 0;
 	}
 
+	private int handleCreate(int name){
+		String name1 = readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH); 
+		if(name1.isEmpty() || name1 == null){
+			return -1;
+		}
+		OpenFile file = ThreadedKernel.fileSystem.open(name1, true);
+		
+		if(file == null){ return -1;}
+		
+		int filedesc = fileDescriptor(); //not sure how to get fd yet, I think it may depend on impl. of others
+		//is checkname method req here? 
+		if(filedesc==-1){
+			file.close();
+			return -1;
+		}
+		fdtable[filedesc] = file;
+		return filedesc;
+	}
+
+	private int handleOpen(char name){
+
+	}
+
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
 			syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
 			syscallRead = 6, syscallWrite = 7, syscallClose = 8,
@@ -446,6 +469,12 @@ public class UserProcess {
 			return handleHalt();
 		case syscallExit:
 			return handleExit(a0);
+		
+		case syscallCreate:
+			return handleCreate(a0);
+
+		case syscallOpen:
+			return handleOpen(a0);
 
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
