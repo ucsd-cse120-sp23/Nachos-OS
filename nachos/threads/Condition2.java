@@ -320,8 +320,8 @@ public class Condition2 {
 
 	public static void selfTest() {
 		sleepForTest1();
-		sleepForTest2();
-		// cvTestN(100);
+		// sleepForTest2();
+		cvTestN(100);
 
 		InterlockTest InterlockTest1 = new InterlockTest();
 		

@@ -348,6 +348,24 @@ public class UserProcess {
 	}
 
 	/**
+	 * Handle the create() system call.
+	 * Attempt to open the named disk file, creating it if it does not exist,
+ 	 * and return a file descriptor that can be used to access the file. If
+     * the file already exists, creat truncates it.
+     *
+	 * Note that creat() can only be used to create files on disk; creat() will
+	 * never return a file descriptor referring to a stream.
+	 *
+	 * Returns the new file descriptor, or -1 if an error occurred.
+	 */
+	// private int handleCreate(int vaName) {
+	// 	String fileName = readVirtualMemoryString(vaName, 256);
+	// 	return -1;
+	// }
+
+
+
+	/**
 	 * Handle the halt() system call.
 	 */
 	private int handleHalt() {
@@ -373,6 +391,47 @@ public class UserProcess {
 
 		return 0;
 	}
+
+	private int handleExec(int name, int argc, int argv) {
+		return 0;
+	}
+
+	private int handleJoin(int pid, int status) {
+
+		return 0;
+
+	}
+
+	// private int handleCreat()
+	private int handleOpen(int name) {
+
+		return 0;
+
+	}
+	private int handleRead(int fileDescriptor, int buffer, int count) {
+		return 0;
+
+	}
+
+	private int handleWrite(int fileDescriptor, int buffer, int count) {
+
+		return 0;
+
+	}
+
+	private int handleClose(int fileDescriptor) {
+
+		return 0;
+
+	}
+
+	private int handleUnlink(int name) {
+
+		return 0;
+
+	}
+
+
 
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
 			syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
@@ -441,17 +500,55 @@ public class UserProcess {
 	 * @return the value to be returned to the user.
 	 */
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
-		switch (syscall) {
-		case syscallHalt:
-			return handleHalt();
-		case syscallExit:
-			return handleExit(a0);
 
-		default:
-			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
-			Lib.assertNotReached("Unknown system call!");
-		}
-		return 0;
+		
+		switch (syscall) {
+			case syscallHalt:
+				return handleHalt();
+			
+			// changed REMEMBER TO DO SANITY CHECKS FOR EVERY HANDLER!!!!!!!!!!!!!!!!
+			case syscallExit:
+				// a0: status 
+				return handleExit(a0);
+			case syscallExec:
+				// a0: name
+				// a1: argc
+				// a2: argv
+				return handleExec(a0, a1, a2);
+			case syscallJoin:
+				// a0: pid
+				// a1: int status
+				return handleJoin(a0, a1);
+			case syscallCreate:
+				// a0: name
+				return handleCreate(a0);
+			case syscallOpen:
+				// a0: name
+				return handleOpen(a0);
+			case syscallRead:
+				// a0: fileDescriptor
+				// a1: buffer
+				// a2: count
+				return handleRead(a0, a1, a2);
+			case syscallWrite:
+				// a0: fileDescriptor
+				// a1: buffer
+				// a2: count
+				return handleWrite(a0, a1, a2);
+			case syscallClose:
+				// a0: fileDescriptor
+				return handleClose(a0);
+			case syscallUnlink:
+				// a0: name
+				return handleUnlink(a0);
+		
+
+			default:
+				Lib.debug(dbgProcess, "Unknown syscall " + syscall);
+				Lib.assertNotReached("Unknown system call!");
+			}
+
+			return 0;
 	}
 
 	/**
