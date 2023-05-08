@@ -392,6 +392,7 @@ public class UserProcess {
 		return 0;
 	}
 
+
 	private int handleExec(int name, int argc, int argv) {
 		return 0;
 	}
@@ -402,7 +403,25 @@ public class UserProcess {
 
 	}
 
-	// private int handleCreat()
+	private int handleCreate(int name){
+		String name1 = readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH); 
+		if(name1.isEmpty() || name1 == null){
+			return -1;
+		}
+		OpenFile file = ThreadedKernel.fileSystem.open(name1, true);
+		
+		if(file == null){ return -1;}
+		
+		int filedesc = fileDescriptor(); //not sure how to get fd yet, I think it may depend on impl. of others
+		//is checkname method req here? 
+		if(filedesc==-1){
+			file.close();
+			return -1;
+		}
+		fdtable[filedesc] = file;
+		return filedesc;
+	}
+
 	private int handleOpen(int name) {
 
 		return 0;
@@ -430,7 +449,6 @@ public class UserProcess {
 		return 0;
 
 	}
-
 
 
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
@@ -500,7 +518,6 @@ public class UserProcess {
 	 * @return the value to be returned to the user.
 	 */
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
-
 		
 		switch (syscall) {
 			case syscallHalt:
