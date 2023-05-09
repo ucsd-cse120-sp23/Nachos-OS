@@ -7,6 +7,8 @@ import nachos.vm.*;
 
 import java.io.EOFException;
 import java.io.FileDescriptor;
+import java.nio.Buffer;
+
 
 /**
  * Encapsulates the state of a user process that is not contained in its user
@@ -29,7 +31,9 @@ public class UserProcess {
 		pageTable = new TranslationEntry[numPhysPages];
 		for (int i = 0; i < numPhysPages; i++)
 			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
-		this.fileDescriptors = new OpenFile[fileSize]; // FIXME
+		this.fileDescriptors = new OpenFile[MAX_NUM_FILE]; // FIXME
+		this.fileDescriptors[0] = UserKernel.console.openForReading();
+		this.fileDescriptors[1] = UserKernel.console.openForWriting();
 	}
 
 	/**
@@ -429,7 +433,11 @@ public class UserProcess {
 	 */
 	private int handleCreate(int name) {
 
-		String fileName = this.readVirtualMemoryString(name, 256);
+		if (name < 0) {
+			return -1;
+		}
+
+		String fileName = this.readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH);
 		if (fileName == null) {
 			return -1;
 		}
@@ -451,6 +459,10 @@ public class UserProcess {
 	}
 
 	private int handleOpen(int name) {
+
+		if (name < 0) {
+			return -1;
+		}
 
 		String fileName = this.readVirtualMemoryString(name, 256);
 		if (fileName == null) {
@@ -483,6 +495,14 @@ public class UserProcess {
 	 * Handle the read() system call.
 	 */
 	private int handleRead(int fileDescriptor, int bufAddr, int count) {
+
+		if (bufAddr < 0 || count < 0) {
+			return -1;
+		}
+		if (count == 0) {
+			return 0;
+		}
+
 		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
 			return -1;
 		}
@@ -501,31 +521,112 @@ public class UserProcess {
 			return -1;
 		}
 
-		int byteTransfered = writeVirtualMemory(bufAddr, buffer);
-		if (byteTransfered == 0) {
+		// number of bytes read is number of bytes written to bufAddr
+		int numByteRead = writeVirtualMemory(bufAddr, buffer);
+
+		//************************************
+		// should we check byteTransferred == 0?
+		// TO DO:
+		// if (byteTransfered == 0) {
+		// 	return -1;
+		// }
+
+		// refers to syscall.h. Number of bytes read CAN be smaller than
+		// count
+		return numByteRead;
+	}
+
+
+	/**
+	 * Handle the write() system call.
+	 */
+	private int handleWrite(int fileDescriptor, int bufferAddr, int count) {
+		if (bufferAddr < 0 || count < 0) {
+			return -1;
+		}
+		if (count == 0) {
+			return 0;
+		}
+		
+		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
 			return -1;
 		}
 
+		OpenFile file = fileDescriptors[fileDescriptor];
+		if (file == null) {
+			return -1;
+		}
+
+		// Check if part of the buffer is invalid
+		if (!validUserAddress(bufferAddr, count)) {
+			return -1;
+		}
+
+		byte[] buffer = new byte[count];
+		int bytesRead = readVirtualMemory(bufferAddr, buffer, 0, count);
+		if (bytesRead == 0) {
+			// zero indicates nothing was written
+			return 0;
+		}
+
+		int byteTransfered = file.write(buffer, 0, count);
+
+		// it is an error if this number is smaller than the number of bytes requested
+		// On error, -1 is returned, and the new file position is undefined
+		if (byteTransfered <= bytesRead || byteTransfered == -1) {
+			fileDescriptors[fileDescriptor] = null;
+			return -1;
+		}
 		return byteTransfered;
 	}
 
-	private int handleWrite(int fileDescriptor, int bufAddr, int count) {
-
-		return -1;
-
-	}
-
+	/**
+	 * Handle the close() system call.
+	 */
 	private int handleClose(int fileDescriptor) {
-
+		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
+			return -1;
+		}
+		OpenFile file = fileDescriptors[fileDescriptor];
+		if (file == null) {
+			return -1;
+		}
+		file.close();
+		fileDescriptors[fileDescriptor] = null;
 		return 0;
-
 	}
 
+	/**
+	 * Handle the unlink() system call.
+	 */
 	private int handleUnlink(int name) {
+		if (name < 0) {
+			return -1;
+		}
+		// Delete a file from the file system.
+		String fileName = this.readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH);
+		if (fileName == null) {
+			return -1;
+		}
+		// this process will ask the file system to remove the file,
+		// but the file will not actually be deleted by the file system until all other
+		// processes are done with the file
+		boolean removedFile = ThreadedKernel.fileSystem.remove(fileName);
+		return removedFile ? 0 : -1;
+	}
+	
+	private boolean validUserAddress(int startAddr, int length) {
+		if (startAddr < 0 || length < 0) {
+			return false;
+		}
 
-		return 0;
+		int startVPN = Processor.pageFromAddress(startAddr);
+		int endVPN = Processor.pageFromAddress(startAddr + length - 1);
+
+		return startVPN >= 0 && endVPN < pageTable.length;
 
 	}
+
 
 
 
@@ -636,7 +737,8 @@ public class UserProcess {
 			case syscallUnlink:
 				// a0: name
 				return handleUnlink(a0);
-		
+
+
 
 			default:
 				Lib.debug(dbgProcess, "Unknown syscall " + syscall);
@@ -700,7 +802,7 @@ public class UserProcess {
 
 	private static final char dbgProcess = 'a';
 
-	private static final int fileSize = 16;
+	private static final int MAX_NUM_FILE = 16;
 
 	private static final int MAX_FILE_NAME_LENGTH = 256;
 }
