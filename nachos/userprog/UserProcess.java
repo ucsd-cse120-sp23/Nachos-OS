@@ -494,9 +494,9 @@ public class UserProcess {
 	/**
 	 * Handle the read() system call.
 	 */
-	private int handleRead(int fileDescriptor, int bufAddr, int count) {
+	private int PhysToVrMem(int fileDescriptor, int buffer, int count) {
 
-		if (bufAddr < 0 || count < 0) {
+		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
 			return -1;
 		}
 		if (count == 0) {
@@ -512,17 +512,17 @@ public class UserProcess {
 			return -1;
 		}
 
-		byte[] buffer = new byte[count]; 
+		byte[] fileContent = new byte[count]; 
 		// FIXME: what is the maxium size of a buffer in the address? may need a while
 		// loop
 		
-		int byteRead = file.read(buffer, 0, count); // should the buffer smaller than count???
-		if (byteRead == -1) {
+		int numBytesReadFromFile = file.read(fileContent, 0, count); // should the buffer smaller than count???
+		if (numBytesReadFromFile == -1) {
 			return -1;
 		}
 
-		// number of bytes read is number of bytes written to bufAddr
-		int numByteRead = writeVirtualMemory(bufAddr, buffer);
+		// number of bytes transferred from Physical Memory into Virtual Memory
+		int numBytesToVrMem = writeVirtualMemory(buffer, fileContent);
 
 		//************************************
 		// should we check byteTransferred == 0?
@@ -533,15 +533,15 @@ public class UserProcess {
 
 		// refers to syscall.h. Number of bytes read CAN be smaller than
 		// count
-		return numByteRead;
+		return numBytesToVrMem;
 	}
 
 
 	/**
 	 * Handle the write() system call.
 	 */
-	private int handleWrite(int fileDescriptor, int bufferAddr, int count) {
-		if (bufferAddr < 0 || count < 0) {
+	private int VrToPhysMem(int fileDescriptor, int buffer, int count) {
+		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
 			return -1;
 		}
 		if (count == 0) {
@@ -558,26 +558,30 @@ public class UserProcess {
 		}
 
 		// Check if part of the buffer is invalid
-		if (!validUserAddress(bufferAddr, count)) {
+		if (!validUserAddress(buffer, count)) {
 			return -1;
 		}
 
-		byte[] buffer = new byte[count];
-		int bytesRead = readVirtualMemory(bufferAddr, buffer, 0, count);
-		if (bytesRead == 0) {
+		byte[] fileContent = new byte[count];
+
+		int numBytesReadFromBuffer = readVirtualMemory(buffer, fileContent, 0, count);
+		
+		if (numBytesReadFromBuffer == 0) {
+
 			// zero indicates nothing was written
 			return 0;
 		}
 
-		int byteTransfered = file.write(buffer, 0, count);
+		int numbBytesToPhysMem = file.write(buffer, fileContent, 0, count);
 
 		// it is an error if this number is smaller than the number of bytes requested
 		// On error, -1 is returned, and the new file position is undefined
-		if (byteTransfered <= bytesRead || byteTransfered == -1) {
+		if (numbBytesToPhysMem <= numBytesReadFromBuffer || numbBytesToPhysMem == -1) {
 			fileDescriptors[fileDescriptor] = null;
 			return -1;
 		}
-		return byteTransfered;
+
+		return numbBytesToPhysMem;
 	}
 
 	/**
@@ -723,14 +727,13 @@ public class UserProcess {
 				return handleOpen(a0);
 			case syscallRead:
 				// a0: fileDescriptor
-				// a1: bufAddr
-				// a2: count
-				return handleRead(a0, a1, a2);
+				// a1: buffer
+				return PhysToVrMem(a0, a1, a2);
 			case syscallWrite:
 				// a0: fileDescriptor
-				// a1: bufAddr
+				// a1: buffer
 				// a2: count
-				return handleWrite(a0, a1, a2);
+				return VrToPhysMem(a0, a1, a2);
 			case syscallClose:
 				// a0: fileDescriptor
 				return handleClose(a0);
