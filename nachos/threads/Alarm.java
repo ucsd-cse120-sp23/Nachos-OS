@@ -228,7 +228,7 @@ public class Alarm {
 		Random rn = new Random();
 
 		for (int i=0; i < numDuration; i++) {
-			Integer duration = new Integer(100+rn.nextInt(range_Duration));
+			Integer duration = 100+rn.nextInt(range_Duration);
 			durations.add(duration);
 		}
 		
