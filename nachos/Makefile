@@ -69,3 +69,6 @@ test:
 	cd ../test ; make
 
 ag:	$(patsubst ../ag/%.java,nachos/ag/%.class,$(wildcard ../ag/*.java))
+
+
+# TARGETS = halt sh matmalt sort echo cat cp mv rm

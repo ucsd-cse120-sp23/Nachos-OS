@@ -196,13 +196,64 @@ public class UserProcess {
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
+		// if (vaddr < 0 || vaddr >= memory.length)
+		// 	return 0;
+		// 	amount = Math.min(length, memory.length - vaddr);
+			
+		// 	for (int i=0; i < length; i++) {
+		// 		if (memory[i] != 0) {
+		// 			if (data[offset + i] == 0) {
+		// 				data[offset + i] = memory[i];
+		
+		// 			}
+	
+		// 			else {
+		// 				return 
+		// 			}
+		// 		}
+	
+		// 	}
+		// 	while ( && memory[currLen]) { 
+		// 		data[offset + currLen ] = 
+	
+		// 	}
+		// 	while ()
+
+		// int 
+		// System.arraycopy(data, offset, memory, vaddr, amount);
+
+		// return amount;
+
+		//-----------------------------------------------------------------------------
+
+
+
+		// for now, just assume that virtual addresses equal physical addresses
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
 
-		int amount = Math.min(length, memory.length - vaddr);
-		System.arraycopy(data, offset, memory, vaddr, amount);
+		int numBytesToCopy = Math.min(length, memory.length - vaddr);
+		int numBytesCopied = 0;
 
-		return amount;
+		for (int i=0; i < numBytesToCopy; i++) {
+
+			//***********************
+			// how to  check if this is full
+			if (data[i] == 0) {
+
+				if (data[offset + i] == 0) {
+					data[offset + i] = memory[i];
+	
+				}
+
+				else {
+					break;
+				}
+			}
+
+		}
+
+		return numBytesCopied;
 	}
 
 	/**
@@ -494,7 +545,7 @@ public class UserProcess {
 	/**
 	 * Handle the read() system call.
 	 */
-	private int PhysToVrMem(int fileDescriptor, int buffer, int count) {
+	private int FileToVrMem(int fileDescriptor, int buffer, int count) {
 
 		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
 			return -1;
@@ -540,7 +591,7 @@ public class UserProcess {
 	/**
 	 * Handle the write() system call.
 	 */
-	private int VrToPhysMem(int fileDescriptor, int buffer, int count) {
+	private int VrMemToFile(int fileDescriptor, int buffer, int count) {
 		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
 			return -1;
 		}
@@ -728,12 +779,12 @@ public class UserProcess {
 			case syscallRead:
 				// a0: fileDescriptor
 				// a1: buffer
-				return PhysToVrMem(a0, a1, a2);
+				return FileToVrMem(a0, a1, a2);
 			case syscallWrite:
 				// a0: fileDescriptor
 				// a1: buffer
 				// a2: count
-				return VrToPhysMem(a0, a1, a2);
+				return VrMemToFile(a0, a1, a2);
 			case syscallClose:
 				// a0: fileDescriptor
 				return handleClose(a0);
