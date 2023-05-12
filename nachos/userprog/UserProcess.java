@@ -7,6 +7,8 @@ import nachos.vm.*;
 
 import java.io.EOFException;
 import java.io.FileDescriptor;
+import java.nio.Buffer;
+
 
 /**
  * Encapsulates the state of a user process that is not contained in its user
@@ -26,10 +28,12 @@ public class UserProcess {
 	 */
 	public UserProcess() {
 		int numPhysPages = Machine.processor().getNumPhysPages();
-		 = new TranslationEntry[numPhysPages];
+		pageTable = new TranslationEntry[numPhysPages];
 		for (int i = 0; i < numPhysPages; i++)
 			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
-		this.fileDescriptors = new OpenFile[fileSize]; // FIXME
+		this.fileDescriptors = new OpenFile[MAX_NUM_FILE]; // FIXME
+		this.fileDescriptors[0] = UserKernel.console.openForReading();
+		this.fileDescriptors[1] = UserKernel.console.openForWriting();
 	}
 
 	/**
@@ -349,6 +353,24 @@ public class UserProcess {
 	}
 
 	/**
+	 * Handle the create() system call.
+	 * Attempt to open the named disk file, creating it if it does not exist,
+ 	 * and return a file descriptor that can be used to access the file. If
+     * the file already exists, creat truncates it.
+     *
+	 * Note that creat() can only be used to create files on disk; creat() will
+	 * never return a file descriptor referring to a stream.
+	 *
+	 * Returns the new file descriptor, or -1 if an error occurred.
+	 */
+	// private int handleCreate(int vaName) {
+	// 	String fileName = readVirtualMemoryString(vaName, 256);
+	// 	return -1;
+	// }
+
+
+
+	/**
 	 * Handle the halt() system call.
 	 */
 	private int handleHalt() {
@@ -375,12 +397,47 @@ public class UserProcess {
 		return 0;
 	}
 
-	/**
+
+	private int handleExec(int name, int argc, int argv) {
+		return 0;
+	}
+
+	private int handleJoin(int pid, int status) {
+
+		return 0;
+
+	}
+
+	// private int handleCreate(int name){
+	// 	String name1 = readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH); 
+	// 	if(name1 == null){
+	// 		return -1;
+	// 	}
+	// 	OpenFile file = ThreadedKernel.fileSystem.open(name1, true);
+		
+	// 	if(file == null){ return -1;}
+		
+	// 	int filedesc = fileDescriptor(); //not sure how to get fd yet, I think it may depend on impl. of others
+	// 	//is checkname method req here? 
+	// 	if(filedesc==-1){
+	// 		file.close();
+	// 		return -1;
+	// 	}
+
+	// 	fdtable[filedesc] = file;
+	// 	return filedesc;
+	// }
+
+		/**
 	 * Handle the creat() system call.
 	 */
 	private int handleCreate(int name) {
 
-		String fileName = this.readVirtualMemoryString(name, 256);
+		if (name < 0) {
+			return -1;
+		}
+
+		String fileName = this.readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH);
 		if (fileName == null) {
 			return -1;
 		}
@@ -401,10 +458,12 @@ public class UserProcess {
 		return -1;
 	}
 
-	/**
-	 * Handle the open() system call.
-	 */
 	private int handleOpen(int name) {
+
+		if (name < 0) {
+			return -1;
+		}
+
 		String fileName = this.readVirtualMemoryString(name, 256);
 		if (fileName == null) {
 			return -1;
@@ -424,12 +483,26 @@ public class UserProcess {
 			}
 		}
 		return -1;
+
 	}
+
+		/**
+	 * Handle the open() system call.
+	 */
+
 
 	/**
 	 * Handle the read() system call.
 	 */
 	private int handleRead(int fileDescriptor, int bufAddr, int count) {
+
+		if (bufAddr < 0 || count < 0) {
+			return -1;
+		}
+		if (count == 0) {
+			return 0;
+		}
+
 		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
 			return -1;
 		}
@@ -439,24 +512,42 @@ public class UserProcess {
 			return -1;
 		}
 
-		byte[] buffer = new byte[count]; // FIXME: what is the maxium size of a buffer in the address? may need a while
-											// loop
+		byte[] buffer = new byte[count]; 
+		// FIXME: what is the maxium size of a buffer in the address? may need a while
+		// loop
+		
 		int byteRead = file.read(buffer, 0, count); // should the buffer smaller than count???
 		if (byteRead == -1) {
 			return -1;
 		}
-		int byteTransfered = writeVirtualMemory(bufAddr, buffer);
-		if (byteTransfered == 0) {
-			return -1;
-		}
 
-		return byteTransfered;
+		// number of bytes read is number of bytes written to bufAddr
+		int numByteRead = writeVirtualMemory(bufAddr, buffer);
+
+		//************************************
+		// should we check byteTransferred == 0?
+		// TO DO:
+		// if (byteTransfered == 0) {
+		// 	return -1;
+		// }
+
+		// refers to syscall.h. Number of bytes read CAN be smaller than
+		// count
+		return numByteRead;
 	}
+
 
 	/**
 	 * Handle the write() system call.
 	 */
 	private int handleWrite(int fileDescriptor, int bufferAddr, int count) {
+		if (bufferAddr < 0 || count < 0) {
+			return -1;
+		}
+		if (count == 0) {
+			return 0;
+		}
+		
 		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
 			return -1;
 		}
@@ -509,18 +600,21 @@ public class UserProcess {
 	 * Handle the unlink() system call.
 	 */
 	private int handleUnlink(int name) {
+		if (name < 0) {
+			return -1;
+		}
 		// Delete a file from the file system.
-		String fileName = this.readVirtualMemoryString(name, 256);
+		String fileName = this.readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH);
 		if (fileName == null) {
 			return -1;
 		}
 		// this process will ask the file system to remove the file,
 		// but the file will not actually be deleted by the file system until all other
 		// processes are done with the file
-		boolean removedFile = Machine.stubFileSystem().remove(fileName);
+		boolean removedFile = ThreadedKernel.fileSystem.remove(fileName);
 		return removedFile ? 0 : -1;
 	}
-
+	
 	private boolean validUserAddress(int startAddr, int length) {
 		if (startAddr < 0 || length < 0) {
 			return false;
@@ -530,7 +624,11 @@ public class UserProcess {
 		int endVPN = Processor.pageFromAddress(startAddr + length - 1);
 
 		return startVPN >= 0 && endVPN < pageTable.length;
+
 	}
+
+
+
 
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
 			syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
@@ -599,30 +697,56 @@ public class UserProcess {
 	 * @return the value to be returned to the user.
 	 */
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
+		
 		switch (syscall) {
 			case syscallHalt:
 				return handleHalt();
+			
+			// changed REMEMBER TO DO SANITY CHECKS FOR EVERY HANDLER!!!!!!!!!!!!!!!!
 			case syscallExit:
+				// a0: status 
 				return handleExit(a0);
+			case syscallExec:
+				// a0: name
+				// a1: argc
+				// a2: argv
+				return handleExec(a0, a1, a2);
+			case syscallJoin:
+				// a0: pid
+				// a1: int status
+				return handleJoin(a0, a1);
 			case syscallCreate:
-				return handleCreate(a3);
+				// a0: name
+				return handleCreate(a0);
 			case syscallOpen:
-				return handleOpen(a3);
+				// a0: name
+				return handleOpen(a0);
 			case syscallRead:
+				// a0: fileDescriptor
+				// a1: bufAddr
+				// a2: count
 				return handleRead(a0, a1, a2);
 			case syscallWrite:
+				// a0: fileDescriptor
+				// a1: bufAddr
+				// a2: count
 				return handleWrite(a0, a1, a2);
 			case syscallClose:
+				// a0: fileDescriptor
 				return handleClose(a0);
 			case syscallUnlink:
-				return handleUnlink(a3);
-			// FIXME assign proper number inside handle
+				// a0: name
+				return handleUnlink(a0);
+
+
 
 			default:
 				Lib.debug(dbgProcess, "Unknown syscall " + syscall);
 				Lib.assertNotReached("Unknown system call!");
-		}
-		return 0;
+			}
+
+			return 0;
+
 	}
 
 	/**
@@ -678,5 +802,7 @@ public class UserProcess {
 
 	private static final char dbgProcess = 'a';
 
-	private static final int fileSize = 16;
+	private static final int MAX_NUM_FILE = 16;
+
+	private static final int MAX_FILE_NAME_LENGTH = 256;
 }
