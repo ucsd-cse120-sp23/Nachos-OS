@@ -567,13 +567,18 @@ public class UserProcess {
 		// FIXME: what is the maxium size of a buffer in the address? may need a while
 		// loop
 		
-		int numBytesReadFromFile = file.read(fileContent, 0, count); // should the buffer smaller than count???
+		int numBytesReadFromFile = file.read(buffer, fileContent, 0, count); // should the buffer smaller than count???
+
 		if (numBytesReadFromFile == -1) {
 			return -1;
 		}
 
+
+
 		// number of bytes transferred from Physical Memory into Virtual Memory
 		int numBytesToVrMem = writeVirtualMemory(buffer, fileContent);
+
+		// file.write(fileContent, buffer)
 
 		//************************************
 		// should we check byteTransferred == 0?
@@ -595,42 +600,77 @@ public class UserProcess {
 		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
 			return -1;
 		}
+
+		// System.out.println("VrMemToFile #1");
+
 		if (count == 0) {
 			return 0;
 		}
 		
+		// System.out.println("VrMemToFile #2");
+
 		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
 			return -1;
 		}
 
+		// System.out.println("VrMemToFile #3");
+
 		OpenFile file = fileDescriptors[fileDescriptor];
+
 		if (file == null) {
 			return -1;
 		}
+
+		// System.out.println("VrMemToFile #4");
 
 		// Check if part of the buffer is invalid
 		if (!validUserAddress(buffer, count)) {
 			return -1;
 		}
 
-		byte[] fileContent = new byte[count];
+		// System.out.println("VrMemToFile #5");
 
-		int numBytesReadFromBuffer = readVirtualMemory(buffer, fileContent, 0, count);
+		byte[] bytesToWriteToFile = new byte[count];
+
+		// System.out.println("VrMemToFile #6");
+
+		int numBytesReadFromBuffer = readVirtualMemory(buffer, bytesToWriteToFile, 0, count);
 		
+
+
+		// System.out.println("VrMemToFile #7");
+ 		// System.out.println("numBytesReadFromBuffer: " + numBytesReadFromBuffer);
+		// System.out.println("bytesToWriteToFile.length: " + bytesToWriteToFile.length);
+
 		if (numBytesReadFromBuffer == 0) {
 
 			// zero indicates nothing was written
 			return 0;
 		}
 
-		int numbBytesToPhysMem = file.write(buffer, fileContent, 0, count);
+		// System.out.println("VrMemToFile #8");
+
+	
+		// System.out.println("file.length(): " + (file.length()));
+
+		int numbBytesToPhysMem = file.write(bytesToWriteToFile, 0, count);
+
+		// System.out.println("VrMemToFile #9");
+		// System.out.println("numbBytesToPhysMem: " + numbBytesToPhysMem);
+
+
 
 		// it is an error if this number is smaller than the number of bytes requested
 		// On error, -1 is returned, and the new file position is undefined
-		if (numbBytesToPhysMem <= numBytesReadFromBuffer || numbBytesToPhysMem == -1) {
+		if (numbBytesToPhysMem < numBytesReadFromBuffer || numbBytesToPhysMem == -1) {
+			System.out.println("VrMemToFile #10");
+			System.out.println("numbBytesToPhysMem < numBytesReadFromBuffer");
+			System.out.println("numbBytesToPhysMem == -1");
 			fileDescriptors[fileDescriptor] = null;
 			return -1;
 		}
+
+		// System.out.println("VrMemToFile #11");
 
 		return numbBytesToPhysMem;
 	}

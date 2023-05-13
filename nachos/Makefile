@@ -71,4 +71,4 @@ test:
 ag:	$(patsubst ../ag/%.java,nachos/ag/%.class,$(wildcard ../ag/*.java))
 
 
-# TARGETS = halt sh matmalt sort echo cat cp mv rm
+# For project 2 system call test cases, add target to directory TEST's Makefile!!!!!!!!!!
