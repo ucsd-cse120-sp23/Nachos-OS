@@ -34,7 +34,7 @@ public class UserProcess {
 		this.fileDescriptors[0] = UserKernel.console.openForReading();
 		this.fileDescriptors[1] = UserKernel.console.openForWriting();
 	}
-
+// allocate PID for every new process created
 	/**
 	 * Allocate and return a new process of the correct class. The class name is
 	 * specified by the <tt>nachos.conf</tt> key
@@ -311,7 +311,7 @@ public class UserProcess {
 		for (int s = 0; s < coff.getNumSections(); s++) {
 			CoffSection section = coff.getSection(s);
 
-			Lib.debug(dbgProcess, "\tinitializing " + section.getName()
+			Lib.debug(dbgProcess, "\tinitializing " + sectihandleExecon.getName()
 					+ " section (" + section.getLength() + " pages)");
 
 			for (int i = 0; i < section.getLength(); i++) {
@@ -405,7 +405,7 @@ public class UserProcess {
 		for(int i = 0; i<fileDescriptors.length; i++){
 			if(fileDescriptors[i] != null){
 				handleClose(i);
-			}
+			} //TAKE CARE OF RELATIONSHIP BETWEEN PARENT AND CHILDREN AND OPEN FILES
 		} 
 		unloadSections(); //free memory used by process
 
@@ -465,7 +465,7 @@ public class UserProcess {
 	private int handleJoin(int childPID, int status_addr) {
 		if(childPID < 0){
 			return -1;
-		}
+		} //USE JOIN IMPLEMENTED IN PART1
 		//can go through hashmap to find child process, if doesn't find return error
 
 	}
