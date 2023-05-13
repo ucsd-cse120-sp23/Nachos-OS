@@ -9,7 +9,6 @@ import java.io.EOFException;
 import java.io.FileDescriptor;
 import java.nio.Buffer;
 
-
 /**
  * Encapsulates the state of a user process that is not contained in its user
  * thread (or threads). This includes its address translation state, a file
@@ -27,10 +26,10 @@ public class UserProcess {
 	 * Allocate a new process.
 	 */
 	public UserProcess() {
-		int numPhysPages = Machine.processor().getNumPhysPages();
-		pageTable = new TranslationEntry[numPhysPages];
-		for (int i = 0; i < numPhysPages; i++)
-			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+		// int numPhysPages = Machine.processor().getNumPhysPages();
+		// pageTable = new TranslationEntry[numPhysPages];
+		// for (int i = 0; i < numPhysPages; i++)
+		// pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
 		this.fileDescriptors = new OpenFile[MAX_NUM_FILE]; // FIXME
 		this.fileDescriptors[0] = UserKernel.console.openForReading();
 		this.fileDescriptors[1] = UserKernel.console.openForWriting();
@@ -299,12 +298,15 @@ public class UserProcess {
 	 * @return <tt>true</tt> if the sections were successfully loaded.
 	 */
 	protected boolean loadSections() {
-		if (numPages > Machine.processor().getNumPhysPages()) {
+		// if (numPages > Machine.processor().getNumPhysPages()) {
+		if (numPages > UserKernel.freePhysicalPages.size()) {
 			coff.close();
 			Lib.debug(dbgProcess, "\tinsufficient physical memory");
 			return false;
 		}
-
+		lock.acquire(); // TODO: check the usage of lock
+		pageTable = new TranslationEntry[numPages];
+		int count = 0;
 		// load sections
 		for (int s = 0; s < coff.getNumSections(); s++) {
 			CoffSection section = coff.getSection(s);
@@ -314,12 +316,16 @@ public class UserProcess {
 
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
-
+				int ppn = UserKernel.freePhysicalPages.removeFirst();
+				pageTable[count] = new TranslationEntry(count, ppn, true, section.isReadOnly(), false, false);
 				// for now, just assume virtual addresses=physical addresses
-				section.loadPage(i, vpn);
+				// section.loadPage(i, vpn);
+				section.loadPage(i, pageTable[vpn].ppn); // TODO check
+				count++;
 			}
 		}
-
+		// TODO: how about stack pages and reserve arguments;
+		lock.release();
 		return true;
 	}
 
@@ -327,6 +333,7 @@ public class UserProcess {
 	 * Release any resources allocated by <tt>loadSections()</tt>.
 	 */
 	protected void unloadSections() {
+		// TODO free the pages associated with this process
 	}
 
 	/**
@@ -355,20 +362,18 @@ public class UserProcess {
 	/**
 	 * Handle the create() system call.
 	 * Attempt to open the named disk file, creating it if it does not exist,
- 	 * and return a file descriptor that can be used to access the file. If
-     * the file already exists, creat truncates it.
-     *
+	 * and return a file descriptor that can be used to access the file. If
+	 * the file already exists, creat truncates it.
+	 *
 	 * Note that creat() can only be used to create files on disk; creat() will
 	 * never return a file descriptor referring to a stream.
 	 *
 	 * Returns the new file descriptor, or -1 if an error occurred.
 	 */
 	// private int handleCreate(int vaName) {
-	// 	String fileName = readVirtualMemoryString(vaName, 256);
-	// 	return -1;
+	// String fileName = readVirtualMemoryString(vaName, 256);
+	// return -1;
 	// }
-
-
 
 	/**
 	 * Handle the halt() system call.
@@ -392,43 +397,101 @@ public class UserProcess {
 
 		Lib.debug(dbgProcess, "UserProcess.handleExit (" + status + ")");
 		// for now, unconditionally terminate with just one process
+
 		Kernel.kernel.terminate();
 
 		return 0;
-	}
 
+		for(int i = 0; i<fileDescriptors.length; i++){
+			if(fileDescriptors[i] != null){
+				handleClose(i);
+			}
+		} 
+		unloadSections(); //free memory used by process
+
+
+
+
+
+	}
 
 	private int handleExec(int name, int argc, int argv) {
 		return 0;
+
+		String filename = readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH);
+		if(filename == null || filename.length() == 0){
+			return -1;
+		}
+
+		if((!filename.endsWith(".coff"))){ //should I impl. upper/lower case check?
+			return -1;
+		}
+
+		if(argc < 0 || argv < 0){
+			return -1;
+		}
+
+		String[] args = new String[argc];
+		byte[] bytes = new byte[4];
+		for(int i = 0; i<argc; i++){
+			int readBytes = readVirtualMemory(argv+4*i, bytes);
+			if(readBytes != 4){
+				return -1;
+			}
+			int arg_addr = Lib.bytesToInt(bytes, 0); //converts byte array to int
+			 //reading in the arguments from argv and putting in String array
+			args[i] = readVirtualMemoryString(arg_addr,2147483647); //set to maximum possible size of a string? not sure if this is correct
+			if(args[i] == null || args[i].isEmpty()){
+				return -1;
+			}
+		}
+
+		UserProcess child = UserProcess.newUserProcess();
+		if(!(child.execute(filename, args))){
+			return -1; //returns if program unable to be loaded
+		}
+		//is forking a solution here?
+		//not sure the child process needs to be or should be added to this process's children; if so we may need to use a Hashmap right?
+
+		return child.getPID(); //need to update current user process class to account for PID tracking
+
 	}
 
-	private int handleJoin(int pid, int status) {
+	public getPID(){
+		return PID;
+	}
 
-		return 0;
+
+	private int handleJoin(int childPID, int status_addr) {
+		if(childPID < 0){
+			return -1;
+		}
+		//can go through hashmap to find child process, if doesn't find return error
 
 	}
 
 	// private int handleCreate(int name){
-	// 	String name1 = readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH); 
-	// 	if(name1 == null){
-	// 		return -1;
-	// 	}
-	// 	OpenFile file = ThreadedKernel.fileSystem.open(name1, true);
-		
-	// 	if(file == null){ return -1;}
-		
-	// 	int filedesc = fileDescriptor(); //not sure how to get fd yet, I think it may depend on impl. of others
-	// 	//is checkname method req here? 
-	// 	if(filedesc==-1){
-	// 		file.close();
-	// 		return -1;
-	// 	}
+	// String name1 = readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH);
+	// if(name1 == null){
+	// return -1;
+	// }
+	// OpenFile file = ThreadedKernel.fileSystem.open(name1, true);
 
-	// 	fdtable[filedesc] = file;
-	// 	return filedesc;
+	// if(file == null){ return -1;}
+
+	// int filedesc = fileDescriptor(); //not sure how to get fd yet, I think it may
+	// depend on impl. of others
+	// //is checkname method req here?
+	// if(filedesc==-1){
+	// file.close();
+	// return -1;
 	// }
 
-		/**
+	// fdtable[filedesc] = file;
+	// return filedesc;
+	// }
+
+	/**
 	 * Handle the creat() system call.
 	 */
 	private int handleCreate(int name) {
@@ -486,10 +549,9 @@ public class UserProcess {
 
 	}
 
-		/**
+	/**
 	 * Handle the open() system call.
 	 */
-
 
 	/**
 	 * Handle the read() system call.
@@ -512,10 +574,10 @@ public class UserProcess {
 			return -1;
 		}
 
-		byte[] buffer = new byte[count]; 
+		byte[] buffer = new byte[count];
 		// FIXME: what is the maxium size of a buffer in the address? may need a while
 		// loop
-		
+
 		int byteRead = file.read(buffer, 0, count); // should the buffer smaller than count???
 		if (byteRead == -1) {
 			return -1;
@@ -524,18 +586,17 @@ public class UserProcess {
 		// number of bytes read is number of bytes written to bufAddr
 		int numByteRead = writeVirtualMemory(bufAddr, buffer);
 
-		//************************************
+		// ************************************
 		// should we check byteTransferred == 0?
 		// TO DO:
 		// if (byteTransfered == 0) {
-		// 	return -1;
+		// return -1;
 		// }
 
 		// refers to syscall.h. Number of bytes read CAN be smaller than
 		// count
 		return numByteRead;
 	}
-
 
 	/**
 	 * Handle the write() system call.
@@ -547,7 +608,7 @@ public class UserProcess {
 		if (count == 0) {
 			return 0;
 		}
-		
+
 		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
 			return -1;
 		}
@@ -614,7 +675,7 @@ public class UserProcess {
 		boolean removedFile = ThreadedKernel.fileSystem.remove(fileName);
 		return removedFile ? 0 : -1;
 	}
-	
+
 	private boolean validUserAddress(int startAddr, int length) {
 		if (startAddr < 0 || length < 0) {
 			return false;
@@ -626,9 +687,6 @@ public class UserProcess {
 		return startVPN >= 0 && endVPN < pageTable.length;
 
 	}
-
-
-
 
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
 			syscallJoin = 3, syscallCreate = 4, syscallOpen = 5,
@@ -697,14 +755,14 @@ public class UserProcess {
 	 * @return the value to be returned to the user.
 	 */
 	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
-		
+
 		switch (syscall) {
 			case syscallHalt:
 				return handleHalt();
-			
+
 			// changed REMEMBER TO DO SANITY CHECKS FOR EVERY HANDLER!!!!!!!!!!!!!!!!
 			case syscallExit:
-				// a0: status 
+				// a0: status
 				return handleExit(a0);
 			case syscallExec:
 				// a0: name
@@ -712,7 +770,7 @@ public class UserProcess {
 				// a2: argv
 				return handleExec(a0, a1, a2);
 			case syscallJoin:
-				// a0: pid
+				// a0: 
 				// a1: int status
 				return handleJoin(a0, a1);
 			case syscallCreate:
@@ -738,14 +796,12 @@ public class UserProcess {
 				// a0: name
 				return handleUnlink(a0);
 
-
-
 			default:
 				Lib.debug(dbgProcess, "Unknown syscall " + syscall);
 				Lib.assertNotReached("Unknown system call!");
-			}
+		}
 
-			return 0;
+		return 0;
 
 	}
 
@@ -805,4 +861,7 @@ public class UserProcess {
 	private static final int MAX_NUM_FILE = 16;
 
 	private static final int MAX_FILE_NAME_LENGTH = 256;
+
+	// added lock
+	private Lock lock = new Lock();
 }
