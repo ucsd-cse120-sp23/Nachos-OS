@@ -58,7 +58,7 @@ public class UserProcess {
 		} else {
 			return (UserProcess) Lib.constructObject(Machine.getProcessClassName());
 		}
-	}
+	}/home/linux/ieng6
 
 	/**
 	 * Execute the specified program with the specified arguments. Attempts to
@@ -190,12 +190,16 @@ public class UserProcess {
 	 * @return the number of bytes successfully transferred.
 	 */
 	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+        System.out.println("WriteVirtualMemory length: " + length);
+
 		Lib.assertTrue(offset >= 0 && length >= 0
 				&& offset + length <= data.length);
 
+        
+		// for now, just assume that virtual addresses equal physical addresses
 		byte[] memory = Machine.processor().getMemory();
 
-		// for now, just assume that virtual addresses equal physical addresses
+
 		// if (vaddr < 0 || vaddr >= memory.length)
 		// 	return 0;
 		// 	amount = Math.min(length, memory.length - vaddr);
@@ -229,30 +233,41 @@ public class UserProcess {
 
 
 		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr >= memory.length)
-			return 0;
+		if (vaddr < 0 || vaddr >= memory.length) {
+            // System.out.println("WriteVirtualMemory# 1");
+            // System.out.println("vaddr < 0: " + (vaddr < 0));
+            // System.out.println("vaddr >= memory.length: " + (vaddr >= memory.length));
+            return 0;
+        }
 
-		int numBytesToCopy = Math.min(length, memory.length - vaddr);
-		int numBytesCopied = 0;
+		int numBytesToCopy = Math.min(length, memory.length-vaddr);
+		int numBytesCopied = numBytesToCopy;
 
-		for (int i=0; i < numBytesToCopy; i++) {
+		System.arraycopy(data, offset, memory, vaddr, numBytesToCopy);
+
+//        System.out.println("WriteVirtualMemory numBytesToCopy: " + numBytesToCopy);
+
+//		for (int i=0; i < numBytesToCopy; i++) {
 
 			//***********************
 			// how to  check if this is full
-			if (data[i] == 0) {
+			// if (data[i] == 0) {
 
-				if (data[offset + i] == 0) {
-					data[offset + i] = memory[i];
+				// if (data[offset + i] == 0) {
+				// 	data[offset + i] = memory[i];
 	
-				}
+				// }
 
-				else {
-					break;
-				}
-			}
+				// else {
+				// 	break;
+				// }
 
-		}
-
+                // memory[i] = data[offset + i];
+			// }
+//            memory[i] = data[offset + i];
+//            numBytesCopied++;
+//		}
+//        System.out.println("WriteVirtualMemory numBytesCopied: " + numBytesCopied);
 		return numBytesCopied;
 	}
 
@@ -483,6 +498,7 @@ public class UserProcess {
 	 * Handle the creat() system call.
 	 */
 	private int handleCreate(int name) {
+        System.out.println("handleCreate#1");
 
 		if (name < 0) {
 			return -1;
@@ -510,7 +526,7 @@ public class UserProcess {
 	}
 
 	private int handleOpen(int name) {
-
+        System.out.println("handleOpen#1");
 		if (name < 0) {
 			return -1;
 		}
@@ -546,38 +562,51 @@ public class UserProcess {
 	 * Handle the read() system call.
 	 */
 	private int FileToVrMem(int fileDescriptor, int buffer, int count) {
+        // System.out.println("FileToVrMem #1");
+		// System.out.println("FileToVrMem #1 count: " + count);
+
+
 
 		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
+            // System.out.println("FileToVrMem #2");
 			return -1;
 		}
+
+
+
 		if (count == 0) {
+        //     System.out.println("FileToVrMem #3");
 			return 0;
 		}
 
 		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
+            // System.out.println("FileToVrMem #4");
 			return -1;
 		}
 
 		OpenFile file = fileDescriptors[fileDescriptor];
 		if (file == null) {
+            // System.out.println("FileToVrMem #5");
 			return -1;
 		}
+
 
 		byte[] fileContent = new byte[count]; 
 		// FIXME: what is the maxium size of a buffer in the address? may need a while
 		// loop
-		
-		int numBytesReadFromFile = file.read(buffer, fileContent, 0, count); // should the buffer smaller than count???
 
+		int numBytesReadFromFile = file.read(fileContent, 0, count); // should the buffer smaller than count???
+        // System.out.println("FileToVrMem #6 numBytesReadFromFile: " + numBytesReadFromFile);
 		if (numBytesReadFromFile == -1) {
+            // System.out.println("FileToVrMem #7");
 			return -1;
 		}
 
 
 
 		// number of bytes transferred from Physical Memory into Virtual Memory
-		int numBytesToVrMem = writeVirtualMemory(buffer, fileContent);
-
+		int numBytesToVrMem = writeVirtualMemory(buffer, fileContent, 0, count);
+		// System.out.println("FileToVrMem #8 nnumBytesToVrMem: " + numBytesToVrMem);
 		// file.write(fileContent, buffer)
 
 		//************************************
@@ -597,6 +626,7 @@ public class UserProcess {
 	 * Handle the write() system call.
 	 */
 	private int VrMemToFile(int fileDescriptor, int buffer, int count) {
+        // System.out.println("VrMemToFile #1 count" + count);
 		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
 			return -1;
 		}
@@ -663,9 +693,9 @@ public class UserProcess {
 		// it is an error if this number is smaller than the number of bytes requested
 		// On error, -1 is returned, and the new file position is undefined
 		if (numbBytesToPhysMem < numBytesReadFromBuffer || numbBytesToPhysMem == -1) {
-			System.out.println("VrMemToFile #10");
-			System.out.println("numbBytesToPhysMem < numBytesReadFromBuffer");
-			System.out.println("numbBytesToPhysMem == -1");
+			// System.out.println("VrMemToFile #10");
+			// System.out.println("numbBytesToPhysMem < numBytesReadFromBuffer");
+			// System.out.println("numbBytesToPhysMem == -1");
 			fileDescriptors[fileDescriptor] = null;
 			return -1;
 		}
@@ -679,6 +709,7 @@ public class UserProcess {
 	 * Handle the close() system call.
 	 */
 	private int handleClose(int fileDescriptor) {
+        System.out.println("handleClose#1");
 		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
 			return -1;
 		}
