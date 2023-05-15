@@ -311,8 +311,8 @@ public class UserProcess {
 		for (int s = 0; s < coff.getNumSections(); s++) {
 			CoffSection section = coff.getSection(s);
 
-			Lib.debug(dbgProcess, "\tinitializing " + sectihandleExecon.getName()
-					+ " section (" + section.getLength() + " pages)");
+			// Lib.debug(dbgProcess, "\tinitializing " + sectihandleExecon.getName()
+			// 		+ " section (" + section.getLength() + " pages)");
 
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
@@ -401,22 +401,21 @@ public class UserProcess {
 		Kernel.kernel.terminate();
 
 		return 0;
+/////////////////////// 
+		// for(int i = 0; i<fileDescriptors.length; i++){
+		// 	if(fileDescriptors[i] != null){
+		// 		handleClose(i);
+		// 	} //TAKE CARE OF RELATIONSHIP BETWEEN PARENT AND CHILDREN AND OPEN FILES
+		// } 
+//		unloadSections(); //free memory used by process
 
-		for(int i = 0; i<fileDescriptors.length; i++){
-			if(fileDescriptors[i] != null){
-				handleClose(i);
-			} //TAKE CARE OF RELATIONSHIP BETWEEN PARENT AND CHILDREN AND OPEN FILES
-		} 
-		unloadSections(); //free memory used by process
-
-
+		
 
 
 
 	}
 
 	private int handleExec(int name, int argc, int argv) {
-		return 0;
 
 		String filename = readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH);
 		if(filename == null || filename.length() == 0){
@@ -452,22 +451,34 @@ public class UserProcess {
 		}
 		//is forking a solution here?
 		//not sure the child process needs to be or should be added to this process's children; if so we may need to use a Hashmap right?
+		//UPDATE need a hashmap or appropriate data structure to track processes, as per tips, we need to track the children
+
+		//map.put(child.getPID(), child); //here's a sample of it for now
 
 		return child.getPID(); //need to update current user process class to account for PID tracking
 
 	}
 
-	public getPID(){
-		return PID;
+	public int getPID(){ //need to fill in after done updating user process class
+		return 1;
 	}
 
 
 	private int handleJoin(int childPID, int status_addr) {
-		if(childPID < 0){
+		if(childPID < 0 || status_addr < 0){
 			return -1;
-		} //USE JOIN IMPLEMENTED IN PART1
-		//can go through hashmap to find child process, if doesn't find return error
+		} 
+		//UserProcess child = map.get(childPID); //this depends on seeting up the hashmap system. We can simply call get here if it is a hashmap
 
+	//	if(child == null){
+	//		return -1; //can go through hashmap to find child process, if doesn't find return error
+	//	}
+
+
+	//	child.thread.join();//USE JOIN IMPLEMENTED IN PART1 WITH THE HELP OF THREAD IN USERPROCESS.EXECUTE
+		
+
+		return 0;
 	}
 
 	// private int handleCreate(int name){
