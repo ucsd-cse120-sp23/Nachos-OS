@@ -8,6 +8,7 @@ import nachos.vm.*;
 import java.io.EOFException;
 import java.io.FileDescriptor;
 import java.nio.Buffer;
+import java.util.HashMap;
 
 /**
  * Encapsulates the state of a user process that is not contained in its user
@@ -33,6 +34,7 @@ public class UserProcess {
 		this.fileDescriptors = new OpenFile[MAX_NUM_FILE]; // FIXME
 		this.fileDescriptors[0] = UserKernel.console.openForReading();
 		this.fileDescriptors[1] = UserKernel.console.openForWriting();
+		this.PID = globalPID++;
 	}
 // allocate PID for every new process created
 	/**
@@ -430,8 +432,10 @@ public class UserProcess {
 			return -1;
 		}
 
+		//TODO need lock ?
+
 		String[] args = new String[argc];
-		byte[] bytes = new byte[4];
+		byte[] bytes = new byte[4]; //TODO: ask
 		for(int i = 0; i<argc; i++){
 			int readBytes = readVirtualMemory(argv+4*i, bytes);
 			if(readBytes != 4){
@@ -439,28 +443,30 @@ public class UserProcess {
 			}
 			int arg_addr = Lib.bytesToInt(bytes, 0); //converts byte array to int
 			 //reading in the arguments from argv and putting in String array
-			args[i] = readVirtualMemoryString(arg_addr,2147483647); //set to maximum possible size of a string? not sure if this is correct
+			args[i] = readVirtualMemoryString(arg_addr,MAX_FILE_NAME_LENGTH); //set to maximum possible size of a string? not sure if this is correct
 			if(args[i] == null || args[i].isEmpty()){
 				return -1;
 			}
 		}
+		
 
 		UserProcess child = UserProcess.newUserProcess();
 		if(!(child.execute(filename, args))){
 			return -1; //returns if program unable to be loaded
 		}
+
+		child.parent = this; 
+
 		//is forking a solution here?
 		//not sure the child process needs to be or should be added to this process's children; if so we may need to use a Hashmap right?
 		//UPDATE need a hashmap or appropriate data structure to track processes, as per tips, we need to track the children
 
-		//map.put(child.getPID(), child); //here's a sample of it for now
 
-		return child.getPID(); //need to update current user process class to account for PID tracking
+		map.put(this.PID, child); //here's a sample of it for now
+		childMap.put(child.PID, child);
 
-	}
+		return child.PID; //need to update current user process class to account for PID tracking
 
-	public int getPID(){ //need to fill in after done updating user process class
-		return 1;
 	}
 
 
@@ -468,15 +474,15 @@ public class UserProcess {
 		if(childPID < 0 || status_addr < 0){
 			return -1;
 		} 
-		//UserProcess child = map.get(childPID); //this depends on seeting up the hashmap system. We can simply call get here if it is a hashmap
+		UserProcess child = childMap.get(childPID); //this depends on seeting up the hashmap system. We can simply call get here if it is a hashmap
+		if(child == null){
+			return -1; //can go through hashmap to find child process, if doesn't find return error
+		}
 
-	//	if(child == null){
-	//		return -1; //can go through hashmap to find child process, if doesn't find return error
-	//	}
 
-
-	//	child.thread.join();//USE JOIN IMPLEMENTED IN PART1 WITH THE HELP OF THREAD IN USERPROCESS.EXECUTE
+		child.thread.join();//USE JOIN IMPLEMENTED IN PART1 WITH THE HELP OF THREAD IN USERPROCESS.EXECUTE
 		
+		childMap.remove(childPID); //rWhen the current process resumes, it disowns the child process?
 
 		return 0;
 	}
@@ -873,6 +879,18 @@ public class UserProcess {
 
 	private static final int MAX_FILE_NAME_LENGTH = 256;
 
+	public static int globalPID = 0;
+
+	private int PID;
+
 	// added lock
 	private Lock lock = new Lock();
+
+	HashMap<Integer, UserProcess> map = new HashMap<Integer, UserProcess>();
+
+	HashMap<Integer, UserProcess> childMap = new HashMap<Integer, UserProcess>();
+
+	private UserProcess parent = null;
+
+
 }
