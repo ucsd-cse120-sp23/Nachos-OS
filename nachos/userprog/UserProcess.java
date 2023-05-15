@@ -58,7 +58,7 @@ public class UserProcess {
 		} else {
 			return (UserProcess) Lib.constructObject(Machine.getProcessClassName());
 		}
-	}/home/linux/ieng6
+	}
 
 	/**
 	 * Execute the specified program with the specified arguments. Attempts to
@@ -190,7 +190,7 @@ public class UserProcess {
 	 * @return the number of bytes successfully transferred.
 	 */
 	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
-        System.out.println("WriteVirtualMemory length: " + length);
+        // System.out.println("WriteVirtualMemory length: " + length);
 
 		Lib.assertTrue(offset >= 0 && length >= 0
 				&& offset + length <= data.length);
@@ -243,9 +243,12 @@ public class UserProcess {
 		int numBytesToCopy = Math.min(length, memory.length-vaddr);
 		int numBytesCopied = numBytesToCopy;
 
+		// System.out.println("WriteVirtualMemory#5  numBytesToCopy: " + numBytesToCopy);
+
 		System.arraycopy(data, offset, memory, vaddr, numBytesToCopy);
 
-//        System.out.println("WriteVirtualMemory numBytesToCopy: " + numBytesToCopy);
+
+		//System.out.println("WriteVirtualMemory#6  numBytesToCopy: " + numBytesToCopy);
 
 //		for (int i=0; i < numBytesToCopy; i++) {
 
@@ -498,21 +501,21 @@ public class UserProcess {
 	 * Handle the creat() system call.
 	 */
 	private int handleCreate(int name) {
-        System.out.println("handleCreate#1");
+        System.out.println("handleCreate #1");
 
 		if (name < 0) {
 			return -1;
 		}
 
 		String fileName = this.readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH);
-		if (fileName == null) {
+		if (fileName == null || fileName.length() == 0) {
 			return -1;
 		}
 		// Attempt to open the named disk file, creating it if it does not exist
 		OpenFile disk_file = ThreadedKernel.fileSystem.open(fileName, true);
-		if (disk_file == null) {
-			return -1;
-		}
+		// if (disk_file == null) {
+		// 	return -1;
+		// }
 
 		int fd = -1;
 		for (int i = 0; i < fileDescriptors.length; i++) {
@@ -526,7 +529,7 @@ public class UserProcess {
 	}
 
 	private int handleOpen(int name) {
-        System.out.println("handleOpen#1");
+        System.out.println("handleOpen #1");
 		if (name < 0) {
 			return -1;
 		}
@@ -585,18 +588,29 @@ public class UserProcess {
 		}
 
 		OpenFile file = fileDescriptors[fileDescriptor];
-		if (file == null) {
+		// System.out.println("FileToVrMem #4.5 file.length(): " + file.length());
+		//System.out.println("FileToVrMem #4.5 fileDescriptors[fileDescriptor].length(): " + fileDescriptors[fileDescriptor].length());
+		// System.out.println("FileToVrMem #4.5 file.getName(): " + file.getName());
+		if (file == null || file.length() < 0) {
             // System.out.println("FileToVrMem #5");
 			return -1;
 		}
 
 
 		byte[] fileContent = new byte[count]; 
+
+		
 		// FIXME: what is the maxium size of a buffer in the address? may need a while
 		// loop
 
 		int numBytesReadFromFile = file.read(fileContent, 0, count); // should the buffer smaller than count???
+
+
         // System.out.println("FileToVrMem #6 numBytesReadFromFile: " + numBytesReadFromFile);
+		// System.out.println("FileToVrMem #6 fileContent.length: " + fileContent.length);
+		// for (int i=0; i<fileContent.length; i++) {
+		// 	System.out.println("fileContent["+i+"]: "+fileContent[i]);
+		// }
 		if (numBytesReadFromFile == -1) {
             // System.out.println("FileToVrMem #7");
 			return -1;
@@ -605,8 +619,8 @@ public class UserProcess {
 
 
 		// number of bytes transferred from Physical Memory into Virtual Memory
-		int numBytesToVrMem = writeVirtualMemory(buffer, fileContent, 0, count);
-		// System.out.println("FileToVrMem #8 nnumBytesToVrMem: " + numBytesToVrMem);
+		int numBytesToVrMem = writeVirtualMemory(buffer, fileContent);
+		// System.out.println("FileToVrMem #8 numBytesToVrMem: " + numBytesToVrMem);
 		// file.write(fileContent, buffer)
 
 		//************************************
@@ -684,9 +698,11 @@ public class UserProcess {
 		// System.out.println("file.length(): " + (file.length()));
 
 		int numbBytesToPhysMem = file.write(bytesToWriteToFile, 0, count);
-
-		// System.out.println("VrMemToFile #9");
-		// System.out.println("numbBytesToPhysMem: " + numbBytesToPhysMem);
+		// System.out.println("VrMemToFile #9 numbBytesToPhysMem: " + numbBytesToPhysMem);
+		System.out.println("VrMemToFile #9 file.getLength(): " + file.length());
+		// file.getRandomAccessFile().setLength(file.length() + numbBytesToPhysMem);
+		//file.length += numbBytesToPhysMem;
+		// (StubOpenFile file).setLength(file.length() + numbBytesToPhysMem);
 
 
 
@@ -726,6 +742,7 @@ public class UserProcess {
 	 * Handle the unlink() system call.
 	 */
 	private int handleUnlink(int name) {
+		System.out.println("handleUnlink #1");
 		if (name < 0) {
 			return -1;
 		}
