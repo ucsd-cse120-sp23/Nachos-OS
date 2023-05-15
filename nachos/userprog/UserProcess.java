@@ -152,12 +152,30 @@ public class UserProcess {
 
 		byte[] memory = Machine.processor().getMemory();
 
+		int amount = 0;
 		// for now, just assume that virtual addresses equal physical addresses
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
 
-		int amount = Math.min(length, memory.length - vaddr);
-		System.arraycopy(memory, vaddr, data, offset, amount);
+		while (length > 0) {
+			int vpn = Processor.pageFromAddress(vaddr);
+			int vpnOffset = Processor.offsetFromAddress(vaddr);
+			if (vpn < 0 || vpn >= pageTable.length) {
+				return 0;
+			}
+			int phyAddr = pageTable[vpn].ppn * pageSize + vpnOffset;
+			pageTable[vpn].used = true; // TODO not sure!!
+
+			int minLength = Math.min(length, pageSize - vpnOffset);
+			amount += minLength;
+			vaddr += minLength;
+			offset += minLength; // FIXME: what happend if the offset pass the pageSize
+			System.arraycopy(memory, phyAddr, data, offset, minLength);
+			length -= minLength;
+		}
+
+		// int amount = Math.min(length, memory.length - vaddr);
+		// System.arraycopy(memory, vaddr, data, offset, amount);
 
 		return amount;
 	}
@@ -198,8 +216,33 @@ public class UserProcess {
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
 
-		int amount = Math.min(length, memory.length - vaddr);
-		System.arraycopy(data, offset, memory, vaddr, amount);
+		int amount = 0;
+		// int amount = Math.min(length, memory.length - vaddr);
+		// System.arraycopy(data, offset, memory, vaddr, amount);
+		while (length > 0) {
+			int vpn = Processor.pageFromAddress(vaddr);
+			int vpnOffset = Processor.offsetFromAddress(vaddr);
+			if (vpn < 0 || vpn >= pageTable.length) {
+				return amount;
+			}
+
+			if (pageTable[vpn].readOnly) {
+				return amount;
+			}
+
+			int phyAddr = pageTable[vpn].ppn * pageSize + vpnOffset;
+			int minLength = Math.min(length, pageSize - vpnOffset);
+
+			pageTable[vpn].used = true;
+			pageTable[vpn].dirty = true;
+
+			amount += minLength;
+			vaddr += minLength;
+			offset += minLength; // TODO: check
+			System.arraycopy(data, offset, memory, phyAddr, minLength);
+
+			length -= minLength;
+		}
 
 		return amount;
 	}
@@ -304,9 +347,16 @@ public class UserProcess {
 			Lib.debug(dbgProcess, "\tinsufficient physical memory");
 			return false;
 		}
-		lock.acquire(); // TODO: check the usage of lock
+
 		pageTable = new TranslationEntry[numPages];
-		int count = 0;
+		// initial pageTable with numPages
+		for (int i = 0; i < numPages; i++) {
+			int ppn = UserKernel.freePhysicalPages.removeFirst();
+			pageTable[i] = new TranslationEntry(i, ppn, true, false, false, false);
+		}
+
+		lock.acquire(); // TODO: check the usage of lock
+
 		// load sections
 		for (int s = 0; s < coff.getNumSections(); s++) {
 			CoffSection section = coff.getSection(s);
@@ -316,15 +366,17 @@ public class UserProcess {
 
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
-				int ppn = UserKernel.freePhysicalPages.removeFirst();
-				pageTable[count] = new TranslationEntry(count, ppn, true, section.isReadOnly(), false, false);
+
+				// pageTable[count] = new TranslationEntry(count, ppn, true,
+				// section.isReadOnly(), false, false);
 				// for now, just assume virtual addresses=physical addresses
 				// section.loadPage(i, vpn);
-				section.loadPage(i, pageTable[vpn].ppn); // TODO check
-				count++;
+				pageTable[i].vpn = vpn;
+				pageTable[i].readOnly = section.isReadOnly();
+				section.loadPage(i, pageTable[vpn].ppn);
+
 			}
 		}
-		// TODO: how about stack pages and reserve arguments;
 		lock.release();
 		return true;
 	}
@@ -334,6 +386,11 @@ public class UserProcess {
 	 */
 	protected void unloadSections() {
 		// TODO free the pages associated with this process
+		lock.acquire();
+		for (int i = 0; i < numPages; i++) {
+			UserKernel.freePhysicalPages.add(pageTable[i].ppn);
+		}
+		lock.release();
 	}
 
 	/**
@@ -404,6 +461,14 @@ public class UserProcess {
 	}
 
 	private int handleExec(int name, int argc, int argv) {
+		// Execute the program stored in the specified file, with the specified
+		// arguments, in a new child process.
+		String fileName = readVirtualMemoryString(name, 256);
+		// Note that this string must include the ".coff" extension.
+		if (fileName == null || !fileName.contains(".coff") || argc < 0) {
+			return -1;
+		}
+
 		return 0;
 	}
 
@@ -527,17 +592,10 @@ public class UserProcess {
 		}
 
 		// number of bytes read is number of bytes written to bufAddr
-		int numByteRead = writeVirtualMemory(bufAddr, buffer);
-
-		// ************************************
-		// should we check byteTransferred == 0?
-		// TO DO:
-		// if (byteTransfered == 0) {
+		int numByteRead = writeVirtualMemory(bufAddr, buffer, 0, byteRead);
+		// if (numByteRead == 0) {
 		// return -1;
 		// }
-
-		// refers to syscall.h. Number of bytes read CAN be smaller than
-		// count
 		return numByteRead;
 	}
 
