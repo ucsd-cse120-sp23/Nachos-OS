@@ -36,7 +36,7 @@ public class UserProcess {
 		this.fileDescriptors = new OpenFile[MAX_NUM_FILE]; // FIXME
 		this.fileDescriptors[0] = UserKernel.console.openForReading();
 		this.fileDescriptors[1] = UserKernel.console.openForWriting();
-		this.PID = globalPID++;
+		this.PID = globalPID++; 
 	}
 // allocate PID for every new process created
 	/**
@@ -471,7 +471,9 @@ public class UserProcess {
 	 * Handle the halt() system call.
 	 */
 	private int handleHalt() {
-
+		if(this.PID!=0){ //TODO: check for root process (will this be its pid)?
+			return -1;
+		}
 		Machine.halt();
 
 		Lib.assertNotReached("Machine.halt() did not halt machine!");
@@ -541,16 +543,18 @@ public class UserProcess {
 		
 
 		UserProcess child = UserProcess.newUserProcess();
+		child.parent = this; 
 		if(!(child.execute(filename, args))){
 			return -1; //returns if program unable to be loaded
 		}
 
-		child.parent = this; 
+		//child.parent = this; 
 
 		//is forking a solution here?
 		//not sure the child process needs to be or should be added to this process's children; if so we may need to use a Hashmap right?
 		//UPDATE need a hashmap or appropriate data structure to track processes, as per tips, we need to track the children
 
+		//do we need to incr. pid here instead?
 
 		map.put(this.PID, child); //here's a sample of it for now
 		childMap.put(child.PID, child);
@@ -564,8 +568,9 @@ public class UserProcess {
 		if(childPID < 0 || status_addr < 0){
 			return -1;
 		} 
-		UserProcess child = childMap.get(childPID); //this depends on seeting up the hashmap system. We can simply call get here if it is a hashmap
-		if(child == null){
+		UserProcess child = childMap.get(childPID);//check if this is childMap or regular map 
+		//this depends on seeting up the hashmap system. We can simply call get here if it is a hashmap
+		if(child == null || child.parent == this || child.parent == null){ //remove == this?
 			return -1; //can go through hashmap to find child process, if doesn't find return error
 		}
 
@@ -573,22 +578,26 @@ public class UserProcess {
 		child.thread.join();//USE JOIN IMPLEMENTED IN PART1 WITH THE HELP OF THREAD IN USERPROCESS.EXECUTE
 		Integer childPIDD = Integer.valueOf(childPID);
 		if(statusMap.get(childPIDD) == null){
-			return -1; //unable to retrieve status of process
-		}
+		 	return 0; //unable to retrieve status of process
+		 }
 
 
-		byte[] statuses = Lib.bytesFromInt(status_addr);
+
+		//byte[] statuses = Lib.bytesFromInt(status_addr);
+		byte[] statuses = Lib.bytesFromInt(statusMap.get(childPIDD));
 		int written = writeVirtualMemory(status_addr, statuses);
 		if(written!=4){
 			return -1; //error handling case: check if necessary in exec and join; what if not 4? 
 		}
 
+		child.parent = null; 
 		childMap.remove(childPID); //rWhen the current process resumes, it disowns the child process?
+		statusMap.remove(childPID);
 
 
+		return 1;
 
-
-		return 0;
+		//return 0;
 	}
 
 	// private int handleCreate(int name){
