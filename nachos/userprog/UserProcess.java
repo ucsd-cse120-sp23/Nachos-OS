@@ -207,19 +207,19 @@ public class UserProcess {
  
 // starter code's implementation
 //---------------------------------------------------------------------
-//	  Lib.assertTrue(offset >= 0 && length >= 0
-//				&& offset + length <= data.length);
+	  Lib.assertTrue(offset >= 0 && length >= 0
+				&& offset + length <= data.length);
 
-//		byte[] memory = Machine.processor().getMemory();
+		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
-//		if (vaddr < 0 || vaddr >= memory.length)
-//			return 0;
+		if (vaddr < 0 || vaddr >= memory.length)
+			return 0;
 
-//		int amount = Math.min(length, memory.length - vaddr);
-//		System.arraycopy(data, offset, memory, vaddr, amount);
+		int amount = Math.min(length, memory.length - vaddr);
+		System.arraycopy(data, offset, memory, vaddr, amount);
 
-//		return amount;
+		return amount;
 
 // -----------------------------------------------------------------
 
@@ -227,123 +227,123 @@ public class UserProcess {
 // part 2 implementation
 //-----------------------------------------------------------------------------
 
-    Lib.assertTrue(offset >= 0 && length >= 0
-        && offset + length <= data.length);
+    // Lib.assertTrue(offset >= 0 && length >= 0
+    //     && offset + length <= data.length);
         
-    // number of bytes successfully writen into virtual Memory
-    int numBytesWritenToVrMem = 0;
+    // // number of bytes successfully writen into virtual Memory
+    // int numBytesWritenToVrMem = 0;
 
-    // the number of bytes from data that have NOT been transferred yet
-    int numBytesLeft = length;
+    // // the number of bytes from data that have NOT been transferred yet
+    // int numBytesLeft = length;
 
-    // currVaddr is the address if the START of a page on virtual memory 
-    // currVaddr = vaddr + i * pageSize <= vaddr + length
-    // Note: currVaddr is NOT an index of TranslationEntry on pageTable. 
+    // // currVaddr is the address if the START of a page on virtual memory 
+    // // currVaddr = vaddr + i * pageSize <= vaddr + length
+    // // Note: currVaddr is NOT an index of TranslationEntry on pageTable. 
     
-    //TODO: not sure whether we can use translate to get physical Address directly
-    int currVaddr = vaddr;
+    // //TODO: not sure whether we can use translate to get physical Address directly
+    // int currVaddr = vaddr;
     
-    // way 1: get the PTE and offset first, and calculate physical address 
-    //-------------------------------------------------------------------------
-    // Caculate the index of PTE corresponding to current virtual page by
-    // Processor.java's function, and then the PTE
-    //int currPagenNum = pageFromAddress(currVaddr);
-    //TranslationEntry currPTE = pageTable[PagenNum_curVaddr]; 
-    // Caculate offset of urrent virtual page by Processor.java's function
-    // Note: this is NOT related to input offset, which is offset of data
-    //int Offset_currVaddr = offsetFromAddress(curVaddr);
-    //int physAddr = currPTE.ppn + Offset_currVaddr;
+    // // way 1: get the PTE and offset first, and calculate physical address 
+    // //-------------------------------------------------------------------------
+    // // Caculate the index of PTE corresponding to current virtual page by
+    // // Processor.java's function, and then the PTE
+    // //int currPagenNum = pageFromAddress(currVaddr);
+    // //TranslationEntry currPTE = pageTable[PagenNum_curVaddr]; 
+    // // Caculate offset of urrent virtual page by Processor.java's function
+    // // Note: this is NOT related to input offset, which is offset of data
+    // //int Offset_currVaddr = offsetFromAddress(curVaddr);
+    // //int physAddr = currPTE.ppn + Offset_currVaddr;
     
-    //TranslationEntry currPTE = pageTable[currPageNum]; 
+    // //TranslationEntry currPTE = pageTable[currPageNum]; 
     
-    //while (numBytesLeft > 0) {
+    // //while (numBytesLeft > 0) {
       
-    //  if (
+    // //  if (
     
-    //}
-    //----------------------------------------------------------
+    // //}
+    // //----------------------------------------------------------
     
-    // way 2: DIRECTLY get physical address by translate from Processor.java
-    // TODO: should I always use pageSize in translate? Even if numBytesLeft < pageSize.
-    int currPhysAddr;
-    int Offset_currData = offset;
+    // // way 2: DIRECTLY get physical address by translate from Processor.java
+    // // TODO: should I always use pageSize in translate? Even if numBytesLeft < pageSize.
+    // int currPhysAddr;
+    // int Offset_currData = offset;
     
-    if (numBytesLeft < pageSize) {
+    // if (numBytesLeft < pageSize) {
     
-      currPhysAddr = translate(currVaddr, numBytesLeft, true);
+    //   currPhysAddr = translate(currVaddr, numBytesLeft, true);
 
       
-      if (currPhysAddr < Processor.maxPages * Processor.numPhysPages) {
-        // copy data FROM: data[Offset_currData]
-        // copy data TO: memory[currPhysAddr]
-        // number of bytes to copy: numBytesLeft
-        System.arraycopy(data, Offset_currData, memory, currPhysAddr, numBytesLeft);
+    //   if (currPhysAddr < Processor.maxPages * Processor.numPhysPages) {
+    //     // copy data FROM: data[Offset_currData]
+    //     // copy data TO: memory[currPhysAddr]
+    //     // number of bytes to copy: numBytesLeft
+    //     System.arraycopy(data, Offset_currData, memory, currPhysAddr, numBytesLeft);
         
-        // numBytesLeft less bytes of data to transfer
-        numBytesLeft -= numBytesLeft;
+    //     // numBytesLeft less bytes of data to transfer
+    //     numBytesLeft -= numBytesLeft;
         
-        // numBytesLeft more bytes of data transferred
-        numBytesWritenToVrMem += numBytesLeft;
-        return numBytesWritenToVrMem
-      }
-    }
+    //     // numBytesLeft more bytes of data transferred
+    //     numBytesWritenToVrMem += numBytesLeft;
+    //     return numBytesWritenToVrMem
+    //   }
+    // }
     
     
     
-    currPhysAddr = translate(currVaddr, pageSize, true);
+    // currPhysAddr = translate(currVaddr, pageSize, true);
     
     
     
     
-    // do the writing only when:
-    // (1) within the capacity of physical memory
-    // (2) there is still data NOT transferred
-    while (currPhysAddr < Processor.maxPages * Processor.numPhysPages && numBytesLeft >= pageSize) {
-      // copy data FROM: data[Offset_currData]
-      // copy data TO: memory[currPhysAddr]
-      // number of bytes to copy: pageSize
-      System.arraycopy(data, Offset_currData, memory, currPhysAddr, pageSize);
+    // // do the writing only when:
+    // // (1) within the capacity of physical memory
+    // // (2) there is still data NOT transferred
+    // while (currPhysAddr < Processor.maxPages * Processor.numPhysPages && numBytesLeft >= pageSize) {
+    //   // copy data FROM: data[Offset_currData]
+    //   // copy data TO: memory[currPhysAddr]
+    //   // number of bytes to copy: pageSize
+    //   System.arraycopy(data, Offset_currData, memory, currPhysAddr, pageSize);
       
-      // pageSize less bytes of data to transfer
-      numBytesLeft -= pageSize;
+    //   // pageSize less bytes of data to transfer
+    //   numBytesLeft -= pageSize;
       
-      // pageSize more bytes of data transferred
-      numBytesWritenToVrMem += pageSize;
+    //   // pageSize more bytes of data transferred
+    //   numBytesWritenToVrMem += pageSize;
       
-      // next virtual address should be incremented by pageSize
-      currVaddr += pageSize;
+    //   // next virtual address should be incremented by pageSize
+    //   currVaddr += pageSize;
       
-      Offset_currData += pageSize;
+    //   Offset_currData += pageSize;
       
-      // next physical address
-      currPhysAddr = translate(currVaddr, pageSize, true);
-    }
+    //   // next physical address
+    //   currPhysAddr = translate(currVaddr, pageSize, true);
+    // }
     
-    // if there is still bytes left, AND less than pageSize,
-    // the remaining bytes are just leftover
-    // NOTE: if numBytesLeft >= pageSize, then capacity of physical
-    // memory is reached
-    if (numBytesLeft < pageSize && numBytesLeft > 0) {
+    // // if there is still bytes left, AND less than pageSize,
+    // // the remaining bytes are just leftover
+    // // NOTE: if numBytesLeft >= pageSize, then capacity of physical
+    // // memory is reached
+    // if (numBytesLeft < pageSize && numBytesLeft > 0) {
     
-      currVaddr += numBytesLeft - pageSize;
-      currPhysAddr = translate(currVaddr, numBytesLeft, true);
-      Offset_currData = offset + length - (pageSize - numBytesLeft); 
+    //   currVaddr += numBytesLeft - pageSize;
+    //   currPhysAddr = translate(currVaddr, numBytesLeft, true);
+    //   Offset_currData = offset + length - (pageSize - numBytesLeft); 
       
-      if (currPhysAddr < Processor.maxPages * Processor.numPhysPages) {
-        // copy data FROM: data[Offset_currData]
-        // copy data TO: memory[currPhysAddr]
-        // number of bytes to copy: numBytesLeft
-        System.arraycopy(data, Offset_currData, memory, currPhysAddr, numBytesLeft);
+    //   if (currPhysAddr < Processor.maxPages * Processor.numPhysPages) {
+    //     // copy data FROM: data[Offset_currData]
+    //     // copy data TO: memory[currPhysAddr]
+    //     // number of bytes to copy: numBytesLeft
+    //     System.arraycopy(data, Offset_currData, memory, currPhysAddr, numBytesLeft);
         
-        // numBytesLeft less bytes of data to transfer
-        numBytesLeft -= numBytesLeft;
+    //     // numBytesLeft less bytes of data to transfer
+    //     numBytesLeft -= numBytesLeft;
         
-        // numBytesLeft more bytes of data transferred
-        numBytesWritenToVrMem += numBytesLeft;
-      }
-    }
+    //     // numBytesLeft more bytes of data transferred
+    //     numBytesWritenToVrMem += numBytesLeft;
+    //   }
+    // }
     
-    return numBytesWritenToVrMem;
+    // return numBytesWritenToVrMem;
       
     
     
@@ -644,8 +644,8 @@ public class UserProcess {
 		// System.out.println("FileToVrMem #1 count: " + count);
 
 
-
-		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
+		//if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
+		if (buffer < 0 || count < 0) {
             // System.out.println("FileToVrMem #2");
 			return -1;
 		}
@@ -716,7 +716,8 @@ public class UserProcess {
 	 */
 	private int VrMemToFile(int fileDescriptor, int buffer, int count) {
         // System.out.println("VrMemToFile #1 count" + count);
-		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
+		// if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
+		if (buffer < 0 || count < 0) {
 			return -1;
 		}
 
@@ -770,11 +771,11 @@ public class UserProcess {
 		// System.out.println("VrMemToFile #8");
 
 	
-		System.out.println("file.length(): " + (file.length()));
+		// System.out.println("file.length(): " + (file.length()));
 
 		int numbBytesWrittenToFile = file.write(bytesToWriteToFile, 0, count);
-		System.out.println("VrMemToFile #9 numbBytesWrittenToFile: " + numbBytesWrittenToFile);
-		System.out.println("VrMemToFile #9 file.getLength(): " + file.length());
+		// System.out.println("VrMemToFile #9 numbBytesWrittenToFile: " + numbBytesWrittenToFile);
+		// System.out.println("VrMemToFile #9 file.getLength(): " + file.length());
 		// file.getRandomAccessFile().setLength(file.length() + numbBytesToPhysMem);
 		//file.length += numbBytesToPhysMem;
 		// (StubOpenFile file).setLength(file.length() + numbBytesToPhysMem);
