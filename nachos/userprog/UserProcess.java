@@ -26,8 +26,13 @@ public class UserProcess {
 	public UserProcess() {
 		int numPhysPages = Machine.processor().getNumPhysPages();
 		pageTable = new TranslationEntry[numPhysPages];
-		for (int i = 0; i < numPhysPages; i++)
-			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+		for (int i = 0; i < numPhysPages; i++) {
+		  pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+    }
+    this.fileDescriptors = new OpenFile[MAX_NUM_FILE]; // FIXME
+      
+ 		this.fileDescriptors[0] = UserKernel.console.openForReading();
+		this.fileDescriptors[1] = UserKernel.console.openForWriting();
 	}
 
 	/**
@@ -184,6 +189,11 @@ public class UserProcess {
 	 * @return the number of bytes successfully transferred.
 	 */
 	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+    
+//    System.out.println("UserProcess.writeVirtualMemory #1 vaddr; " + vaddr);
+//    System.out.println("UserProcess.writeVirtualMemory #1 offset: " + offset);
+//    System.out.println("UserProcess.writeVirtualMemory #1 length: " + length);
+//    System.out.println("UserProcess.writeVirtualMemory #1 offset + length <= data.length: "+(offset + length <= data.length));
 		Lib.assertTrue(offset >= 0 && length >= 0
 				&& offset + length <= data.length);
 
@@ -316,6 +326,8 @@ public class UserProcess {
 		}
 
 		return true;
+
+    
 	}
 
 	/**
@@ -372,6 +384,290 @@ public class UserProcess {
 		Kernel.kernel.terminate();
 
 		return 0;
+	}
+ 
+ 	private int handleExec(int name, int argc, int argv) {
+		return 0;
+	}
+
+	private int handleJoin(int pid, int status) {
+
+		return 0;
+
+	}
+ 
+ 		/**
+	 * Handle the creat() system call.
+	 */
+	private int handleCreate(int name) {
+        System.out.println("handleCreate #1");
+
+		if (name < 0) {
+			return -1;
+		}
+
+		String fileName = this.readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH);
+		if (fileName == null || fileName.length() == 0) {
+			return -1;
+		}
+		// Attempt to open the named disk file, creating it if it does not exist
+		OpenFile disk_file = ThreadedKernel.fileSystem.open(fileName, true);
+		if (disk_file == null) {
+			return -1;
+		}
+
+		int fd = -1;
+		for (int i = 0; i < fileDescriptors.length; i++) {
+			if (fileDescriptors[i] == null) {
+				fileDescriptors[i] = disk_file;
+				fd = i;
+				return fd;
+			}
+		}
+		return -1;
+	}
+
+	private int handleOpen(int name) {
+        // System.out.println("handleOpen #1");
+		if (name < 0) {
+			return -1;
+		}
+
+		String fileName = this.readVirtualMemoryString(name, 256);
+		if (fileName == null) {
+			return -1;
+		}
+		// Attempt to open the named disk file, creating it if it does not exist
+		OpenFile disk_file = ThreadedKernel.fileSystem.open(fileName, false);
+		if (disk_file == null) {
+			return -1;
+		}
+
+		int fd = -1;
+		for (int i = 0; i < fileDescriptors.length; i++) {
+			if (fileDescriptors[i] == null) {
+				fileDescriptors[i] = disk_file;
+				fd = i;
+				return fd;
+			}
+		}
+		return -1;
+
+	}
+
+		/**
+	 * Handle the open() system call.
+	 */
+
+
+	/**
+	 * Handle the read() system call.
+	 */
+	private int FileToVrMem(int fileDescriptor, int buffer, int count) {
+        // System.out.println("FileToVrMem #1");
+		// System.out.println("FileToVrMem #1 count: " + count);
+
+
+		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
+		// if (buffer < 0 || count < 0) {
+            // System.out.println("FileToVrMem #2");
+			return -1;
+		}
+
+
+
+		if (count == 0) {
+        //     System.out.println("FileToVrMem #3");
+			return 0;
+		}
+
+		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
+            // System.out.println("FileToVrMem #4");
+			return -1;
+		}
+
+		OpenFile file = fileDescriptors[fileDescriptor];
+		//if (file == null || file.length() < 0) {
+		if (file == null) {
+            // System.out.println("FileToVrMem #5");
+			return -1;
+		}
+		//System.out.println("FileToVrMem #5.1 file.length(): " + file.length());
+		//System.out.println("FileToVrMem #5.5 fileDescriptors[fileDescriptor].length(): " + fileDescriptors[fileDescriptor].length());
+		//System.out.println("FileToVrMem #5.2 file.getName(): " + file.getName());
+
+		byte[] fileContent = new byte[count]; 
+
+		
+		// FIXME: what is the maxium size of a buffer in the address? may need a while
+		// loop
+
+		int numBytesReadFromFile = file.read(fileContent, 0, count); // should the buffer smaller than count???
+
+
+    	//System.out.println("FileToVrMem #6.1 numBytesReadFromFile: " + numBytesReadFromFile);
+		//System.out.println("FileToVrMem #6.2 fileContent.length: " + fileContent.length);
+		// for (int i=0; i<fileContent.length; i++) {
+		// 	System.out.println("fileContent["+i+"]: "+fileContent[i]);
+		// }
+		if (numBytesReadFromFile == -1) {
+            // System.out.println("FileToVrMem #7");
+			return -1;
+		}
+
+
+
+		// number of bytes transferred from Physical Memory into Virtual Memory
+		int numBytesToVrMem = writeVirtualMemory(buffer, fileContent);
+		//System.out.println("FileToVrMem #8 numBytesToVrMem: " + numBytesToVrMem);
+		// file.write(fileContent, buffer)
+
+		//************************************
+		// should we check byteTransferred == 0?
+		// TO DO:
+		// if (byteTransfered == 0) {
+		// 	return -1;
+		// }
+
+		// refers to syscall.h. Number of bytes read CAN be smaller than
+		// count
+		return numBytesToVrMem;
+	}
+
+
+	/**
+	 * Handle the write() system call.
+	 */
+	private int VrMemToFile(int fileDescriptor, int buffer, int count) {
+        // System.out.println("VrMemToFile #1 count" + count);
+		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
+		// if (buffer < 0 || count < 0) {
+			return -1;
+		}
+
+		// System.out.println("VrMemToFile #1");
+
+		if (count == 0) {
+			return 0;
+		}
+		
+		// System.out.println("VrMemToFile #2");
+
+		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
+			return -1;
+		}
+
+		// System.out.println("VrMemToFile #3");
+
+		OpenFile file = fileDescriptors[fileDescriptor];
+
+		if (file == null) {
+			return -1;
+		}
+
+		// System.out.println("VrMemToFile #4");
+
+		// Check if part of the buffer is invalid
+		if (!validUserAddress(buffer, count)) {
+			return -1;
+		}
+
+		// System.out.println("VrMemToFile #5");
+
+		byte[] bytesToWriteToFile = new byte[count];
+
+		// System.out.println("VrMemToFile #6");
+
+		int numBytesReadFromBuffer = readVirtualMemory(buffer, bytesToWriteToFile, 0, count);
+		
+
+
+		// System.out.println("VrMemToFile #7");
+ 		// System.out.println("numBytesReadFromBuffer: " + numBytesReadFromBuffer);
+		// System.out.println("bytesToWriteToFile.length: " + bytesToWriteToFile.length);
+
+		if (numBytesReadFromBuffer == 0) {
+
+			// zero indicates nothing was written
+			return 0;
+		}
+
+		// System.out.println("VrMemToFile #8");
+
+	
+		// System.out.println("file.length(): " + (file.length()));
+
+		int numbBytesWrittenToFile = file.write(bytesToWriteToFile, 0, count);
+		// System.out.println("VrMemToFile #9 numbBytesWrittenToFile: " + numbBytesWrittenToFile);
+		// System.out.println("VrMemToFile #9 file.getLength(): " + file.length());
+		// file.getRandomAccessFile().setLength(file.length() + numbBytesToPhysMem);
+		//file.length += numbBytesToPhysMem;
+		// (StubOpenFile file).setLength(file.length() + numbBytesToPhysMem);
+
+
+
+		// it is an error if this number is smaller than the number of bytes requested
+		// On error, -1 is returned, and the new file position is undefined
+		if (numbBytesWrittenToFile < numBytesReadFromBuffer || numbBytesWrittenToFile == -1) {
+			// System.out.println("VrMemToFile #10");
+			// System.out.println("numbBytesToPhysMem < numBytesReadFromBuffer");
+			// System.out.println("numbBytesToPhysMem == -1");
+			fileDescriptors[fileDescriptor] = null;
+			return -1;
+		}
+
+		// System.out.println("VrMemToFile #11");
+
+		return numbBytesWrittenToFile;
+	}
+
+	/**
+	 * Handle the close() system call.
+	 */
+	private int handleClose(int fileDescriptor) {
+        System.out.println("handleClose#1");
+		if (!(fileDescriptor >= 0 && fileDescriptor < fileDescriptors.length)) {
+			return -1;
+		}
+		OpenFile file = fileDescriptors[fileDescriptor];
+		if (file == null) {
+			return -1;
+		}
+		file.close();
+		fileDescriptors[fileDescriptor] = null;
+		return 0;
+	}
+
+	/**
+	 * Handle the unlink() system call.
+	 */
+	private int handleUnlink(int name) {
+		System.out.println("handleUnlink #1");
+		if (name < 0) {
+			return -1;
+		}
+		// Delete a file from the file system.
+		String fileName = this.readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH);
+		if (fileName == null) {
+			return -1;
+		}
+		// this process will ask the file system to remove the file,
+		// but the file will not actually be deleted by the file system until all other
+		// processes are done with the file
+		boolean removedFile = ThreadedKernel.fileSystem.remove(fileName);
+		return removedFile ? 0 : -1;
+	}
+	
+	private boolean validUserAddress(int startAddr, int length) {
+		if (startAddr < 0 || length < 0) {
+			return false;
+		}
+
+		int startVPN = Processor.pageFromAddress(startAddr);
+		int endVPN = Processor.pageFromAddress(startAddr + length - 1);
+
+		return startVPN >= 0 && endVPN < pageTable.length;
+
 	}
 
 	private static final int syscallHalt = 0, syscallExit = 1, syscallExec = 2,
@@ -446,7 +742,37 @@ public class UserProcess {
 			return handleHalt();
 		case syscallExit:
 			return handleExit(a0);
-
+      
+			case syscallExec:
+				// a0: name
+				// a1: argc
+				// a2: argv
+				return handleExec(a0, a1, a2);
+			case syscallJoin:
+				// a0: pid
+				// a1: int status
+				return handleJoin(a0, a1);
+			case syscallCreate:
+				// a0: name
+				return handleCreate(a0);
+			case syscallOpen:
+				// a0: name
+				return handleOpen(a0);
+			case syscallRead:
+				// a0: fileDescriptor
+				// a1: buffer
+				return FileToVrMem(a0, a1, a2);
+			case syscallWrite:
+				// a0: fileDescriptor
+				// a1: buffer
+				// a2: count
+				return VrMemToFile(a0, a1, a2);
+			case syscallClose:
+				// a0: fileDescriptor
+				return handleClose(a0);
+			case syscallUnlink:
+				// a0: name
+				return handleUnlink(a0);
 		default:
 			Lib.debug(dbgProcess, "Unknown syscall " + syscall);
 			Lib.assertNotReached("Unknown system call!");
@@ -504,4 +830,16 @@ public class UserProcess {
 	private static final int pageSize = Processor.pageSize;
 
 	private static final char dbgProcess = 'a';
+ 
+   //What we added
+   	// What we added
+    
+   	/** This process's page table. */
+		protected OpenFile[] fileDescriptors;
+	private static final int MAX_NUM_FILE = 16;
+
+	private static final int MAX_FILE_NAME_LENGTH = 256;
+
+	// added lock
+	private Lock lock = new Lock();
 }
