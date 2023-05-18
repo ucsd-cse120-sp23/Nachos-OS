@@ -29,25 +29,30 @@ public class UserKernel extends ThreadedKernel {
 				exceptionHandler();
 			}
 		});
+
+		// initialize free physical pages
+		for (int index = 0; index < Machine.processor().getNumPhysPages(); index++) {
+			freePhysicalPages.add(index); // 0 - number of physical pages - 1
+		}
 	}
 
 	/**
 	 * Test the console device.
 	 */
 	public void selfTest() {
-		// super.selfTest();
+		super.selfTest();
 
-		// System.out.println("Testing the console device. Typed characters");
-		// System.out.println("will be echoed until q is typed.");
+		System.out.println("Testing the console device. Typed characters");
+		System.out.println("will be echoed until q is typed.");
 
-		// char c;
+		char c;
 
-		// do {
-		// 	c = (char) console.readByte(true);
-		// 	console.writeByte(c);
-		// } while (c != 'q');
+		do {
+			c = (char) console.readByte(true);
+			console.writeByte(c);
+		} while (c != 'q');
 
-		// System.out.println("");
+		System.out.println("");
 	}
 
 	/**
@@ -124,4 +129,8 @@ public class UserKernel extends ThreadedKernel {
 
 	// dummy variables to make javac smarter
 	private static Coff dummy1 = null;
+
+	// initialized static linkedlist to store free physical pages
+	public static LinkedList<Integer> freePhysicalPages = new LinkedList<>();
+	
 }
