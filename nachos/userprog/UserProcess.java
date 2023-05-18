@@ -492,20 +492,48 @@ public class UserProcess {
 		Lib.debug(dbgProcess, "UserProcess.handleExit (" + status + ")");
 		// for now, unconditionally terminate with just one process
 
-		Kernel.kernel.terminate();
+		//Kernel.kernel.terminate(); //commented out by me
 
-		return 0;
-/////////////////////// 
-		// for(int i = 0; i<fileDescriptors.length; i++){
-		// 	if(fileDescriptors[i] != null){
-		// 		handleClose(i);
-		// 	} //TAKE CARE OF RELATIONSHIP BETWEEN PARENT AND CHILDREN AND OPEN FILES
-		// } 
-//		unloadSections(); //free memory used by process
-
-		
+		//return 0; //commented out by me
 
 
+		////////////////// PART 3 BELOW: 
+
+
+		 for(int i = 0; i<fileDescriptors.length; i++){
+		 	if(fileDescriptors[i] != null){
+		 		handleClose(i);
+				fileDescriptors[i].close();
+			  fileDescriptors[i] = null;
+		 	} 
+		 } 
+		unloadSections(); //free memory used by process
+			if(status==0){
+				statusMap.put(this.PID, status);
+			}
+			else if (status!=0){
+				statusMap.put(this.PID, null);
+			}
+			if(this.parent!=null){
+				map.remove(this.parent.PID); //remove child from map that accesses all the child by parent pid (remove child from the parent's children map essentially)
+				this.parent = null;
+			}
+			for(UserProcess child: map.values()){ //is this structure ideal? perhaps Map<Integer, List<UserProcess>> map = new HashMap<>(); would be better 
+				child.parent = null; //remove the parenthood of the child if it has children
+			} 
+			childMap.clear();
+			if(this.PID != 0){//or this ? : if(!(map.isEmpty())){
+				thread.finish(); 
+			}
+			
+				Machine.halt();
+			
+			if (status!=0) { 
+				return 0; 
+			} 
+			else { 
+				return status; 
+			}
 
 	}
 
@@ -1000,11 +1028,11 @@ public class UserProcess {
 	// added lock
 	private Lock lock = new Lock();
 
-	HashMap<Integer, UserProcess> map = new HashMap<Integer, UserProcess>();
+	HashMap<Integer, UserProcess> map = new HashMap<Integer, UserProcess>(); //parent pid gives children is Map<Integer, List<UserProcess>> map = new HashMap<>(); better?
 
-	HashMap<Integer, UserProcess> childMap = new HashMap<Integer, UserProcess>();
+	HashMap<Integer, UserProcess> childMap = new HashMap<Integer, UserProcess>(); //process PID with content
 
-	HashMap<Integer, Integer> statusMap = new HashMap<Integer, Integer>();
+	HashMap<Integer, Integer> statusMap = new HashMap<Integer, Integer>(); //statusMap
 
 	private UserProcess parent = null;
 
