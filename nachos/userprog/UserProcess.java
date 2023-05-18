@@ -1029,7 +1029,7 @@ public class UserProcess {
 	private Lock lock = new Lock();
 
 	HashMap<Integer, UserProcess> map = new HashMap<Integer, UserProcess>(); //parent pid gives children is Map<Integer, List<UserProcess>> map = new HashMap<>(); better?
-
+//what if lots of children for one parents
 	HashMap<Integer, UserProcess> childMap = new HashMap<Integer, UserProcess>(); //process PID with content
 
 	HashMap<Integer, Integer> statusMap = new HashMap<Integer, Integer>(); //statusMap
