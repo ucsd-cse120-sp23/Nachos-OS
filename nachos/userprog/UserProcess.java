@@ -8,6 +8,10 @@ import nachos.vm.*;
 import java.io.EOFException;
 import java.io.FileDescriptor;
 import java.nio.Buffer;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.Map;
 
 /**
  * Encapsulates the state of a user process that is not contained in its user
@@ -39,6 +43,14 @@ public class UserProcess {
       
  		this.fileDescriptors[0] = UserKernel.console.openForReading();
 		this.fileDescriptors[1] = UserKernel.console.openForWriting();
+		
+		UserKernel.processIDLock.acquire();
+		this.PID = UserKernel.processID++;
+		UserKernel.processIDLock.release();
+		// exitStatus = null;
+		// statusLock = new Lock();
+		// joinCondition = new Condition(statusLock);
+		
 	}
 
 	/**
@@ -545,6 +557,10 @@ public class UserProcess {
 		//System.out.println("UserProcess.loadSections #4 BEFORELockRelease: ");
 		lock.release();
 
+		UserKernel.processCountLock.acquire();
+		UserKernel.processCount++;
+		UserKernel.processCountLock.release();
+
 		//System.out.println("UserProcess.loadSections #4 AFTERLockRelease: ");
 
 		return true;
@@ -558,8 +574,10 @@ public class UserProcess {
 	protected void unloadSections() {
 		// TODO free the pages associated with this process
 		lock.acquire();
-		for (int i = 0; i < numPages; i++) {
-			UserKernel.freePhysicalPages.add(pageTable[i].ppn);
+		for (int i = 0; i < pageTable.length; i++) {
+			if (pageTable[i].valid) {
+				UserKernel.freePhysicalPages.add(pageTable[i].ppn);
+			}
 		}
 		lock.release();
 	}
@@ -607,6 +625,20 @@ public class UserProcess {
 	 * Handle the halt() system call.
 	 */
 	private int handleHalt() {
+		//added for part3
+		if (this != UserKernel.root){
+			return 0;
+		}
+
+		//Ask if we need this section!!!!!!!!!!!!!!!!!!!!!!!!!!
+		//------------------------------------------------------
+		unloadSections();
+		for (int i = 2; i < fileDescriptors.length; i++) {
+		    if (fileDescriptors[i] != null)
+			fileDescriptors[i].close();
+		}
+		//--------------------------------------------------------
+			
 
 		Machine.halt();
 
@@ -624,20 +656,198 @@ public class UserProcess {
 		// can grade your implementation.
 
 		Lib.debug(dbgProcess, "UserProcess.handleExit (" + status + ")");
-		// for now, unconditionally terminate with just one process
+		
 
-		Kernel.kernel.terminate();
+		for(int i = 0; i<fileDescriptors.length; i++){
+			if(fileDescriptors[i] != null){
+				fileDescriptors[i].close();
+				fileDescriptors[i] = null;
+			} 
+		} 
+		unloadSections();
+		Integer exitstatus = status;
+		// if(status==0){
+		// 	statusMap.put(this.PID, status);
+		// 	exitstatus = status;
+		// }
+		// else if (status!=0){
+		// 	statusMap.put(this.PID, null);
+		// }
 
-		return 0;
+
+		if(this.parent!=null){
+			this.parent.statusMap.put(this.PID, exitstatus);
+			this.parent = null;
+		}
+
+		// like in Alarm, Iterator is SAFER than for each
+		// Any children of the process no longer have a parent process.
+
+		// Iterator it_childMap = childMap.entrySet().iterator();
+		// while (it_childMap.hasNext()) //is this structure ideal? perhaps Map<Integer, List<UserProcess>> map = new HashMap<>(); would be better 
+		// 	Map.Entry child = (Map.Entry)it_childMap.next(); //remove the parenthood of the child if it has children
+			
+		// } 
+
+		for (UserProcess child: childMap.values()) { //is this structure ideal? perhaps Map<Integer, List<UserProcess>> map = new HashMap<>(); would be better 
+			child.parent = null; //remove the parenthood of the child if it has children
+			
+		} 
+
+		childMap.clear();
+		
+
+		
+		// Machine.halt();
+		coff.close();
+		UserKernel.processCountLock.acquire();
+		//If the last process then terminate the system
+		if (--UserKernel.processCount == 0) {
+			Kernel.kernel.terminate();
+		}
+		UserKernel.processCountLock.release();
+		
+		KThread.finish(); 
+		return status;
 	}
+
+	
  
  	private int handleExec(int name, int argc, int argv) {
-		return 0;
+
+		String filename = readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH);
+		if(filename == null || filename.length() == 0){
+			return -1;
+		}
+
+		if((!filename.endsWith(".coff"))){ //should I impl. upper/lower case check?
+			return -1;
+		}
+
+		if(argc < 0 || argv < 0){
+			return -1;
+		}
+
+		//TODO need lock ?
+
+		String[] args = new String[argc];
+		byte[] bytes = new byte[4]; //TODO: ask
+		for(int i = 0; i<argc; i++){
+			int readBytes = readVirtualMemory(argv+4*i, bytes);
+			if(readBytes != 4){
+				return -1;
+			}
+			int arg_addr = Lib.bytesToInt(bytes, 0); //converts byte array to int
+			 //reading in the arguments from argv and putting in String array
+			args[i] = readVirtualMemoryString(arg_addr,MAX_FILE_NAME_LENGTH); //set to maximum possible size of a string? not sure if this is correct
+			if(args[i] == null || args[i].isEmpty()){
+				return -1;
+			}
+		}
+		
+
+		UserProcess child = newUserProcess();
+		childMap.put(child.PID, child);
+		child.parent = this; 
+		if(!(child.execute(filename, args))){
+			return -1; //returns if program unable to be loaded
+		}
+
+		//child.parent = this; 
+
+		//is forking a solution here?
+		//not sure the child process needs to be or should be added to this process's children; if so we may need to use a Hashmap right?
+		//UPDATE need a hashmap or appropriate data structure to track processes, as per tips, we need to track the children
+
+		//do we need to incr. pid here instead?
+
+		// map.put(this.PID, child); //here's a sample of it for now
+		
+
+		return child.PID; //need to update current user process class to account for PID tracking
+
 	}
 
-	private int handleJoin(int pid, int status) {
+	private int handleJoin(int childPID, int status_addr) {
+//-----------------------------------
+		if(childPID < 0 || status_addr < 0){
+			return -1;
+		} 
 
-		return 0;
+		//***********does that guarentee that "only a process's parent can join to it" */
+		UserProcess child = childMap.get(childPID);//check if this is childMap or regular map 
+		
+		//***************************** are the last 2 check correct? */
+		// should child.parent == this be child.parent != this????????????
+		if(child == null || child.parent != null || child.parent == this){ //remove == this?
+			return -1; //can go through hashmap to find child process, if doesn't find return error
+		}
+
+		
+		Integer childPIDD = Integer.valueOf(childPID);
+		if(!statusMap.containsKey(childPIDD)){
+		 	return 0; //unable to retrieve status of process
+		}
+		
+		Integer childStatus = statusMap.get(childPIDD);
+		if (childStatus == null) {
+			child.thread.join();//USE JOIN IMPLEMENTED IN PART1 WITH THE HELP OF THREAD IN USERPROCESS.EXECUTE
+			childStatus = statusMap.get(childPIDD);
+		}
+        
+
+		//byte[] statuses = Lib.bytesFromInt(status_addr);
+		byte[] statuses = Lib.bytesFromInt(childStatus);
+		int written = writeVirtualMemory(status_addr, statuses);
+		if(written!=4){
+			return -1; //error handling case: check if necessary in exec and join; what if not 4? 
+		}
+
+		// child.parent = null; 
+		childMap.remove(childPID); //When the current process resumes, it disowns the child process?
+		statusMap.remove(childPID);
+
+
+		return 1;
+
+		//---------------------------------------------------------
+
+		// if(childPID < 0 || status_addr < 0){
+		// 	return -1;
+		// } 
+
+		// //***********does that guarentee that "only a process's parent can join to it" */
+		// UserProcess child = childMap.get(childPID);//check if this is childMap or regular map 
+		
+		// //***************************** are the last 2 check correct? */
+		// // should child.parent == this be child.parent != this????????????
+		// if(child == null || child.parent == null || child.parent == this){ //remove == this?
+		// 	return -1; //can go through hashmap to find child process, if doesn't find return error
+		// }
+
+		// child.thread.join();//USE JOIN IMPLEMENTED IN PART1 WITH THE HELP OF THREAD IN USERPROCESS.EXECUTE
+		// Integer childPIDD = Integer.valueOf(childPID);
+		// if(child.exitStatus == -1){
+		//  	return 0; //unable to retrieve status of process
+		//  }
+
+
+
+		// //byte[] statuses = Lib.bytesFromInt(status_addr);
+		// byte[] statuses = Lib.bytesFromInt(childMap.get(childPIDD).exitStatus);
+		// int written = writeVirtualMemory(status_addr, statuses);
+		// if(written != 4){
+		// 	return -1; //error handling case: check if necessary in exec and join; what if not 4? 
+		// }
+
+		// // child.parent = null; 
+		// childMap.remove(childPID); //When the current process resumes, it disowns the child process?
+		
+		// //-------------------------------
+		// child.exitStatus = -1;
+
+
+		// return 1;
 
 	}
  
@@ -1092,6 +1302,16 @@ public class UserProcess {
 
 	// added lock
 	private Lock lock = new Lock();
+
+	private HashMap<Integer,UserProcess> childMap = new HashMap<Integer, UserProcess>();
+	private UserProcess parent;
+	private int PID;
+	private HashMap<Integer, Integer> statusMap = new HashMap<Integer, Integer>(); //statusMap
+	// private Integer exitStatus;
+
+	// private Integer exitStatus;
+	// private Lock statusLock;
+	// private Condition joinCondition;
 
 }
 
