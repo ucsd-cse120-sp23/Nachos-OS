@@ -37,19 +37,22 @@ public class UserProcess {
 		// pageTable = new TranslationEntry[numPhysPages];
 		// for (int i = 0; i < numPhysPages; i++) {
 		//   pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
-    	// }
+		// }
 		//--------------------------------------------------------------------------------------------
-    	this.fileDescriptors = new OpenFile[MAX_NUM_FILE];
-      
- 		this.fileDescriptors[0] = UserKernel.console.openForReading();
+		this.fileDescriptors = new OpenFile[MAX_NUM_FILE];
+
+		this.fileDescriptors[0] = UserKernel.console.openForReading();
 		this.fileDescriptors[1] = UserKernel.console.openForWriting();
-		
+
 		UserKernel.processIDLock.acquire();
 		this.PID = UserKernel.processID++;
 		UserKernel.processIDLock.release();
-		// exitStatus = null;
-		// statusLock = new Lock();
-		// joinCondition = new Condition(statusLock);
+
+		// Part 3
+		//--------------------------------------------------------
+		lock = new Lock();
+		childMap = new HashMap<Integer, UserProcess>();
+		statusMap = new HashMap<Integer, Integer>();
 		
 	}
 
@@ -197,18 +200,18 @@ public class UserProcess {
 	
 
 		// for now, just assume that virtual addresses equal physical addresses
-		// if (vaddr < 0 || vaddr >= memory.length) {
-		// 	return 0;
-		// }
+		if (vaddr < 0 || vaddr >= memory.length) {
+			return 0;
+		}
 
 		int numBytesLeft = length;    
 		int currVaddr = vaddr;
+		int currDataOffset = offset;
 		int currVpn = 0;
 		int currVpnOffset = 0;
 		int currPhysAddr = 0;
 		int currNumToCopy = 0;
 		int numBytesCopied = 0;
-		int currDataOffset = offset;
 
 
 		while (numBytesLeft  > 0) {
@@ -228,13 +231,14 @@ public class UserProcess {
 		}
 			// *********************************DON'T set used in project 2!!!!!!!!!!!!!!!!!
 			//***************************** otherwwise, pageexception and vpn >= translation.length
-			//pageTable[currVpn].used = true; // TODO not sure!!
+			//	pageTable[currVpn].used = true;
 			// pageSize - currVpnOffset does NOT have to -1
 			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
 			System.arraycopy(memory, currPhysAddr , data, currDataOffset, currNumToCopy);
 			numBytesCopied  += currNumToCopy;
-			currDataOffset += currNumToCopy; // FIXME: what happend if the offset pass the pageSize
 			numBytesLeft -= currNumToCopy;
+			currDataOffset += currNumToCopy;
+
 			currVaddr+= currNumToCopy;
 		}
 
@@ -309,17 +313,22 @@ public class UserProcess {
 	if (vaddr < 0 || vaddr >= memory.length) {
 		return 0;
 	}
+
     int numBytesLeft = length;    
     int currVaddr = vaddr;
+	int currDataOffset = offset;
     int currVpn = 0;
     int currVpnOffset = 0;
     int currPhysAddr = 0;
     int currNumToCopy = 0;
     int numBytesCopied = 0;
-    int currDataOffset = offset;
+
     
+	//*******************************Do we need a lock and why? */
     //lock.acquire();
 	while (numBytesLeft > 0) {
+
+		//*******************************Do we need a lock and why? */
 		//lock.acquire();
 
 		// if (currVpn < 0 || currVpn >= pageTable.length) {
@@ -522,10 +531,11 @@ public class UserProcess {
 			//System.out.println("UserProcess.loadSections #2 pageTable[i].vpn: " + pageTable[i].vpn);
 		}
 
+		// *********************lock
 		// TODO: check the usage of lock
 
 
-		//System.out.println("UserProcess.loadSections #2.05 coff.getNumSections(): " + coff.getNumSections());
+		// System.out.println("UserProcess.loadSections #2.05 coff.getNumSections(): " + coff.getNumSections());
 
 		// load sections
 		for (int s = 0; s < coff.getNumSections(); s++) {
@@ -538,6 +548,10 @@ public class UserProcess {
 			//      System.out.println("UserProcess.loadSections #2.2 section.getLength: " + section.getLength());
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
+
+				if (vpn >= pageTable.length) {
+					System.out.println("UserProcess.loadSections #4 vpn >= pageTable.length");
+				}
 				// System.out.println("UserProcess.loadSections #3 vpn: " + vpn);
 
 				// pageTable[count] = new TranslationEntry(count, ppn, true,
@@ -574,7 +588,6 @@ public class UserProcess {
 	 * Release any resources allocated by <tt>loadSections()</tt>.
 	 */
 	protected void unloadSections() {
-		// TODO free the pages associated with this process
 		lock.acquire();
 		for (int i = 0; i < pageTable.length; i++) {
 			if (pageTable[i].valid) {
@@ -612,26 +625,12 @@ public class UserProcess {
 	 * Handle the halt() system call.
 	 */
 	private int handleHalt() {
-
-		// Make sure LAST process to call this. otherwise -1
-		// added for part3
 		// Refers to syscall.h halt()
-		// Only the root process * (the first process, executed by UserKernel.run())
- 		//  should be allowed to * execute this syscall
+		// Only the initial process, aka root process can call handleHalt
+		// Otherwise, return -1
 		if (this != UserKernel.root){
 			return -1;
 		}
-
-		//Ask if we need this section!!!!!!!!!!!!!!!!!!!!!!!!!!
-		//------------------------------------------------------
-		unloadSections();
-		for (int i = 2; i < fileDescriptors.length; i++) {
-		    if (fileDescriptors[i] != null) {
-				fileDescriptors[i].close();
-			}
-		}
-		//--------------------------------------------------------
-			
 
 		Machine.halt();
 
@@ -658,7 +657,8 @@ public class UserProcess {
 			} 
 		} 
 		unloadSections();
-		Integer exitstatus = status;
+		Integer ExitStatus = status;
+
 		// if(status==0){
 		// 	statusMap.put(this.PID, status);
 		// 	exitstatus = status;
@@ -669,21 +669,22 @@ public class UserProcess {
 
 
 		if(this.parent!=null){
-			this.parent.statusMap.put(this.PID, exitstatus);
+			this.parent.statusMap.put(this.PID, ExitStatus);
 			this.parent = null;
 		}
 
 		// like in Alarm, Iterator is SAFER than for each
 		// Any children of the process no longer have a parent process.
 
-		// Iterator it_childMap = childMap.entrySet().iterator();
-		// while (it_childMap.hasNext()) //is this structure ideal? perhaps Map<Integer, List<UserProcess>> map = new HashMap<>(); would be better 
-		// 	Map.Entry child = (Map.Entry)it_childMap.next(); //remove the parenthood of the child if it has children
-			
-		// } 
-
-		for (UserProcess child: childMap.values()) { //is this structure ideal? perhaps Map<Integer, List<UserProcess>> map = new HashMap<>(); would be better 
-			child.parent = null; //remove the parenthood of the child if it has children
+		Iterator<Map.Entry<Integer, UserProcess >> it_childMap = childMap.entrySet().iterator();
+		//*********************************
+		// is this structure ideal? perhaps Map<Integer, List<UserProcess>> map = new HashMap<>(); would be better 
+		while (it_childMap.hasNext()){
+			// remove the parenthood of the child if it has children
+			// System.out.println("UserProcess.handleExit #2 childMap iteartor hasNext");
+			Map.Entry<Integer, UserProcess> pair_PIDChild = (Map.Entry<Integer, UserProcess > )it_childMap.next(); 
+			UserProcess child = pair_PIDChild.getValue();
+			child.parent = null;
 			
 		} 
 
@@ -701,6 +702,8 @@ public class UserProcess {
 		UserKernel.processCountLock.release();
 		
 		KThread.finish(); 
+		
+		//**************************** Should this be status or ExitStatus?*/
 		return status;
 	}
 
@@ -721,18 +724,20 @@ public class UserProcess {
 			return -1;
 		}
 
-		//TODO need lock ?
+		//**************************************
 
 		String[] args = new String[argc];
-		byte[] bytes = new byte[4]; //TODO: ask
+		byte[] bytes = new byte[4];
 		for(int i = 0; i<argc; i++){
 			int readBytes = readVirtualMemory(argv+4*i, bytes);
 			if(readBytes != 4){
 				return -1;
 			}
-			int arg_addr = Lib.bytesToInt(bytes, 0); //converts byte array to int
-			 //reading in the arguments from argv and putting in String array
-			args[i] = readVirtualMemoryString(arg_addr,MAX_FILE_NAME_LENGTH); //set to maximum possible size of a string? not sure if this is correct
+			//converts byte array to int
+			int arg_addr = Lib.bytesToInt(bytes, 0); 
+			//reading in the arguments from argv and putting in String array
+			//set to maximum possible size of a string? not sure if this is correct
+			args[i] = readVirtualMemoryString(arg_addr,MAX_FILE_NAME_LENGTH); 
 			if(args[i] == null || args[i].isEmpty()){
 				return -1;
 			}
@@ -746,13 +751,14 @@ public class UserProcess {
 			return -1; //returns if program unable to be loaded
 		}
 
+		//********************************************Question
 		//child.parent = this; 
 
-		//is forking a solution here?
-		//not sure the child process needs to be or should be added to this process's children; if so we may need to use a Hashmap right?
-		//UPDATE need a hashmap or appropriate data structure to track processes, as per tips, we need to track the children
+		// is forking a solution here?
+		// not sure the child process needs to be or should be added to this process's children; if so we may need to use a Hashmap right?
+		// UPDATE need a hashmap or appropriate data structure to track processes, as per tips, we need to track the children
 
-		//do we need to incr. pid here instead?
+		// do we need to incr. pid here instead?
 
 		// map.put(this.PID, child); //here's a sample of it for now
 		
@@ -803,49 +809,9 @@ public class UserProcess {
 
 
 		return 1;
-
-		//---------------------------------------------------------
-
-		// if(childPID < 0 || status_addr < 0){
-		// 	return -1;
-		// } 
-
-		// //***********does that guarentee that "only a process's parent can join to it" */
-		// UserProcess child = childMap.get(childPID);//check if this is childMap or regular map 
-		
-		// //***************************** are the last 2 check correct? */
-		// // should child.parent == this be child.parent != this????????????
-		// if(child == null || child.parent == null || child.parent == this){ //remove == this?
-		// 	return -1; //can go through hashmap to find child process, if doesn't find return error
-		// }
-
-		// child.thread.join();//USE JOIN IMPLEMENTED IN PART1 WITH THE HELP OF THREAD IN USERPROCESS.EXECUTE
-		// Integer childPIDD = Integer.valueOf(childPID);
-		// if(child.exitStatus == -1){
-		//  	return 0; //unable to retrieve status of process
-		//  }
-
-
-
-		// //byte[] statuses = Lib.bytesFromInt(status_addr);
-		// byte[] statuses = Lib.bytesFromInt(childMap.get(childPIDD).exitStatus);
-		// int written = writeVirtualMemory(status_addr, statuses);
-		// if(written != 4){
-		// 	return -1; //error handling case: check if necessary in exec and join; what if not 4? 
-		// }
-
-		// // child.parent = null; 
-		// childMap.remove(childPID); //When the current process resumes, it disowns the child process?
-		
-		// //-------------------------------
-		// child.exitStatus = -1;
-
-
-		// return 1;
-
 	}
  
- 		/**
+ 	/**
 	 * Handle the creat() system call.
 	 */
 	private int handleCreate(int name) {
@@ -860,15 +826,22 @@ public class UserProcess {
 			return -1;
 		}
 		// Attempt to open the named disk file, creating it if it does not exist
-		OpenFile disk_file = ThreadedKernel.fileSystem.open(fileName, true);
-		if (disk_file == null) {
+		OpenFile FileCreated = ThreadedKernel.fileSystem.open(fileName, true);
+
+		//*******************************This is necessary. If the file is NOT
+		// successfully created, return -1
+		if (FileCreated == null) {
 			return -1;
 		}
 
+		//************************Where do we deal with open a file that is already opened? */
+
 		int fd = -1;
-		for (int i = 0; i < fileDescriptors.length; i++) {
+
+		//***************************Shoudl i start from 2?
+		for (int i = 2; i < fileDescriptors.length; i++) {
 			if (fileDescriptors[i] == null) {
-				fileDescriptors[i] = disk_file;
+				fileDescriptors[i] = FileCreated;
 				fd = i;
 				return fd;
 			}
@@ -887,15 +860,21 @@ public class UserProcess {
 			return -1;
 		}
 		// Attempt to open the named disk file, creating it if it does not exist
-		OpenFile disk_file = ThreadedKernel.fileSystem.open(fileName, false);
-		if (disk_file == null) {
+		OpenFile FileOpened = ThreadedKernel.fileSystem.open(fileName, false);
+
+		// If no file is opned, return -1
+		if (FileOpened == null) {
 			return -1;
 		}
 
+		//************************Where do we deal with open a file that is already opened? */
+
 		int fd = -1;
-		for (int i = 0; i < fileDescriptors.length; i++) {
+
+		//***************************Shoudl i start from 2?
+		for (int i = 2; i < fileDescriptors.length; i++) {
 			if (fileDescriptors[i] == null) {
-				fileDescriptors[i] = disk_file;
+				fileDescriptors[i] = FileOpened;
 				fd = i;
 				return fd;
 			}
@@ -916,14 +895,11 @@ public class UserProcess {
         // System.out.println("FileToVrMem #1");
 		// System.out.println("FileToVrMem #1 count: " + count);
 
-
 		if (buffer < 0 || count < 0 || buffer >= pageSize * numPages) {
 		// if (buffer < 0 || count < 0) {
             // System.out.println("FileToVrMem #2");
 			return -1;
 		}
-
-
 
 		if (count == 0) {
         //     System.out.println("FileToVrMem #3");
@@ -953,6 +929,10 @@ public class UserProcess {
 
     	// System.out.println("FileToVrMem #6.1 numBytesReadFromFile: " + numBytesReadFromFile);
 		// System.out.println("FileToVrMem #6.2 fileContent.length: " + fileContent.length);
+		//******************************************** */
+		// When there's error that numBytesReadFromFile == 0 but fileContent.length == 1,
+		// it's NOT that fileContent is not empty. It's actually because it's an array of length 1
+
 		// for (int i=0; i<fileContent.length; i++) {
 		// 	System.out.println("fileContent["+i+"]: "+fileContent[i]);
 		// }
@@ -966,17 +946,7 @@ public class UserProcess {
 		// number of bytes transferred from Physical Memory into Virtual Memory
 		int numBytesWrittenToVrMem = writeVirtualMemory(buffer, fileContent);
 		// System.out.println("FileToVrMem #8 numBytesWrittenToVrMem: " + numBytesWrittenToVrMem);
-		// file.write(fileContent, buffer)
 
-		//************************************
-		// should we check byteTransferred == 0?
-		// TO DO:
-		// if (byteTransfered == 0) {
-		// 	return -1;
-		// }
-
-		// refers to syscall.h. Number of bytes read CAN be smaller than
-		// count
 		return numBytesWrittenToVrMem;
 	}
 
@@ -1215,7 +1185,6 @@ public class UserProcess {
 				// a1: buffer
 				// a2: count
 				return VrMemToFile(a0, a1, a2);
-
 			case syscallClose:
 				// a0: fileDescriptor
 				return handleClose(a0);
@@ -1286,25 +1255,24 @@ public class UserProcess {
 
  
    	// What we added
-
+	// Part 2
+	// --------------------------------------------------------------
 	protected OpenFile[] fileDescriptors;
 
 	private static final int MAX_NUM_FILE = 16;
 
 	private static final int MAX_FILE_NAME_LENGTH = 256;
 
-	// added lock
-	private Lock lock = new Lock();
+	// Part 3
+	// ------------------------------------------------------------------
+	//****************************************Should we initialzie lock there or in constructor? */
+	private Lock lock;
 
-	private HashMap<Integer,UserProcess> childMap = new HashMap<Integer, UserProcess>();
-	private UserProcess parent;
 	private int PID;
-	private HashMap<Integer, Integer> statusMap = new HashMap<Integer, Integer>(); //statusMap
-	// private Integer exitStatus;
+	private UserProcess parent;
 
-	// private Integer exitStatus;
-	// private Lock statusLock;
-	// private Condition joinCondition;
-
+	//****************************************Should we initialzie lock there or in constructor? */
+	private HashMap<Integer,UserProcess> childMap;
+	private HashMap<Integer, Integer> statusMap;
 }
 
