@@ -1,5 +1,7 @@
 package nachos.userprog;
 
+import java.util.LinkedList;
+
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
@@ -106,15 +108,15 @@ public class UserKernel extends ThreadedKernel {
 
 		String shellProgram = Machine.getShellProgramName();
 		if (!process.execute(shellProgram, new String[] {})) {
-		    System.out.println ("Could not find executable '" +
+			System.out.println("Could not find executable '" +
 					shellProgram + "', trying '" +
 					shellProgram + ".coff' instead.");
-		    shellProgram += ".coff";
-		    if (!process.execute(shellProgram, new String[] {})) {
-			System.out.println ("Also could not find '" +
-					    shellProgram + "', aborting.");
-			Lib.assertTrue(false);
-		    }
+			shellProgram += ".coff";
+			if (!process.execute(shellProgram, new String[] {})) {
+				System.out.println("Also could not find '" +
+						shellProgram + "', aborting.");
+				Lib.assertTrue(false);
+			}
 
 		}
 
@@ -130,6 +132,9 @@ public class UserKernel extends ThreadedKernel {
 
 	/** Globally accessible reference to the synchronized console. */
 	public static SynchConsole console;
+
+	// initialized static linkedlist to store free physical pages
+	public static LinkedList<Integer> freePhysicalPages = new LinkedList<>();
 
 	// dummy variables to make javac smarter
 	private static Coff dummy1 = null;
