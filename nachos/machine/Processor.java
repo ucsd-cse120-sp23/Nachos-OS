@@ -307,11 +307,32 @@ public final class Processor {
 		int offset = offsetFromAddress(vaddr);
 
 		TranslationEntry entry = null;
+		// System.out.println("Processor.translate vpn: "+ vpn);
+		// System.out.println("Processor.translate translations.legnth: "+translations.length);
 
 		// if not using a TLB, then the vpn is an index into the table
 		if (!usingTLB) {
 			if (translations == null || vpn >= translations.length
 					|| translations[vpn] == null || !translations[vpn].valid) {
+
+				// if (translations == null) {
+				// 	System.out.println("Processor.translate translations == null");
+				// }
+
+				// if (vpn >= translations.length) {
+				// 	System.out.println("Processor.translate vpn >= translations.length");
+				// 	System.out.println("vpn: "+ vpn);
+				// 	System.out.println("translations.legnth: "+translations.length);
+				// }
+
+				// if (translations[vpn] == null) {
+				// 	System.out.println("Processor.translate translations[vpn] == null");
+				// }
+
+				// if (!translations[vpn].valid) {
+				// 	System.out.println("Processor.translate !translations[vpn].valid");
+				// }
+
 				privilege.stats.numPageFaults++;
 				Lib.debug(dbgProcessor, "\t\tpage fault");
 				throw new MipsException(exceptionPageFault, vaddr);
@@ -605,8 +626,13 @@ public final class Processor {
 			if (hasBadVAddr)
 				writeRegister(regBadVAddr, badVAddr);
 
-			if (Lib.test(dbgDisassemble) || Lib.test(dbgFullDisassemble))
+			if (Lib.test(dbgDisassemble) || Lib.test(dbgFullDisassemble)) {
 				System.out.println("exception: " + exceptionNames[cause]);
+
+				// debug
+				//--------------------------
+				System.out.println("Processor.MisException cause: "+cause);
+			}
 
 			finishLoad();
 

@@ -229,7 +229,7 @@ public class UserProcess {
 			// *********************************DON'T set used in project 2!!!!!!!!!!!!!!!!!
 			//***************************** otherwwise, pageexception and vpn >= translation.length
 			//pageTable[currVpn].used = true; // TODO not sure!!
-
+			// pageSize - currVpnOffset does NOT have to -1
 			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
 			System.arraycopy(memory, currPhysAddr , data, currDataOffset, currNumToCopy);
 			numBytesCopied  += currNumToCopy;
@@ -348,10 +348,11 @@ public class UserProcess {
 		//  return numBytesCopied;
 		//}
 		//System.out.println("writeVirtualMemory#6 memory.length: " + memory.length);
+		// pageSize - currVpnOffset does NOT have to -1
 		currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
-		//System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
+		// System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
 		if (currPhysAddr + currNumToCopy>= memory.length) {
-		return numBytesCopied;
+			return numBytesCopied;
 		}
 
 		System.arraycopy(data, currDataOffset, memory, currPhysAddr, currNumToCopy);
@@ -537,6 +538,7 @@ public class UserProcess {
 			//      System.out.println("UserProcess.loadSections #2.2 section.getLength: " + section.getLength());
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
+				// System.out.println("UserProcess.loadSections #3 vpn: " + vpn);
 
 				// pageTable[count] = new TranslationEntry(count, ppn, true,
 				// section.isReadOnly(), false, false);
@@ -544,8 +546,8 @@ public class UserProcess {
 				// section.loadPage(i, vpn);
 
 				pageTable[vpn].vpn = vpn;
-				//System.out.println("UserProcess.loadSections #3 pageTable[i].vpn: " + pageTable[i].vpn);
-				//System.out.println("translations.legnth: "+translations.length);
+				// System.out.println("UserProcess.loadSections #3 pageTable[i].vpn: " + pageTable[i].vpn);
+				// System.out.println("translations.legnth: "+translations.length);
 				pageTable[vpn].readOnly = section.isReadOnly();
 
 				section.loadPage(i, pageTable[vpn].ppn);
@@ -605,37 +607,28 @@ public class UserProcess {
 		processor.writeRegister(Processor.regA1, argv);
 	}
 
-	/**
-	 * Handle the create() system call.
-	 * Attempt to open the named disk file, creating it if it does not exist,
-	 * and return a file descriptor that can be used to access the file. If
-	 * the file already exists, creat truncates it.
-	 *
-	 * Note that creat() can only be used to create files on disk; creat() will
-	 * never return a file descriptor referring to a stream.
-	 *
-	 * Returns the new file descriptor, or -1 if an error occurred.
-	 */
-	// private int handleCreate(int vaName) {
-	// String fileName = readVirtualMemoryString(vaName, 256);
-	// return -1;
-	// }
 
 	/**
 	 * Handle the halt() system call.
 	 */
 	private int handleHalt() {
-		//added for part3
+
+		// Make sure LAST process to call this. otherwise -1
+		// added for part3
+		// Refers to syscall.h halt()
+		// Only the root process * (the first process, executed by UserKernel.run())
+ 		//  should be allowed to * execute this syscall
 		if (this != UserKernel.root){
-			return 0;
+			return -1;
 		}
 
 		//Ask if we need this section!!!!!!!!!!!!!!!!!!!!!!!!!!
 		//------------------------------------------------------
 		unloadSections();
 		for (int i = 2; i < fileDescriptors.length; i++) {
-		    if (fileDescriptors[i] != null)
-			fileDescriptors[i].close();
+		    if (fileDescriptors[i] != null) {
+				fileDescriptors[i].close();
+			}
 		}
 		//--------------------------------------------------------
 			
@@ -775,6 +768,7 @@ public class UserProcess {
 		} 
 
 		//***********does that guarentee that "only a process's parent can join to it" */
+		// Does this guarantee parent is running .join()
 		UserProcess child = childMap.get(childPID);//check if this is childMap or regular map 
 		
 		//***************************** are the last 2 check correct? */
@@ -953,15 +947,12 @@ public class UserProcess {
 
 		byte[] fileContent = new byte[count]; 
 
-		
-		// FIXME: what is the maxium size of a buffer in the address? may need a while
-		// loop
 
 		int numBytesReadFromFile = file.read(fileContent, 0, count); // should the buffer smaller than count???
 
 
-    	//System.out.println("FileToVrMem #6.1 numBytesReadFromFile: " + numBytesReadFromFile);
-		//System.out.println("FileToVrMem #6.2 fileContent.length: " + fileContent.length);
+    	// System.out.println("FileToVrMem #6.1 numBytesReadFromFile: " + numBytesReadFromFile);
+		// System.out.println("FileToVrMem #6.2 fileContent.length: " + fileContent.length);
 		// for (int i=0; i<fileContent.length; i++) {
 		// 	System.out.println("fileContent["+i+"]: "+fileContent[i]);
 		// }
@@ -973,8 +964,8 @@ public class UserProcess {
 
 
 		// number of bytes transferred from Physical Memory into Virtual Memory
-		int numBytesToVrMem = writeVirtualMemory(buffer, fileContent);
-		//System.out.println("FileToVrMem #8 numBytesToVrMem: " + numBytesToVrMem);
+		int numBytesWrittenToVrMem = writeVirtualMemory(buffer, fileContent);
+		// System.out.println("FileToVrMem #8 numBytesWrittenToVrMem: " + numBytesWrittenToVrMem);
 		// file.write(fileContent, buffer)
 
 		//************************************
@@ -986,7 +977,7 @@ public class UserProcess {
 
 		// refers to syscall.h. Number of bytes read CAN be smaller than
 		// count
-		return numBytesToVrMem;
+		return numBytesWrittenToVrMem;
 	}
 
 
@@ -1032,7 +1023,9 @@ public class UserProcess {
 		byte[] bytesToWriteToFile = new byte[count];
 
 		// System.out.println("VrMemToFile #6");
-
+		//--------------------------------------------------------------------------
+		// do NOT need to call readVirtualMemory for many times to avoid offset + length > data.length
+		// since 0 + count <= bytesToWriteToFile.length
 		int numBytesReadFromBuffer = readVirtualMemory(buffer, bytesToWriteToFile, 0, count);
 		
 

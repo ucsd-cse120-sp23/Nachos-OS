@@ -49,7 +49,7 @@ public class UserKernel extends ThreadedKernel {
 	 * Test the console device.
 	 */
 	public void selfTest() {
-     //Those CAN be commented out for testing part 1 more efficiently
+     	// Those CAN be commented out for testing part 1 more efficiently
 		super.selfTest();
 
 		System.out.println("Testing the console device. Typed characters");
@@ -59,6 +59,7 @@ public class UserKernel extends ThreadedKernel {
 
 		do {
 			c = (char) console.readByte(true);
+			// c = 'h';
 			console.writeByte(c);
 		} while (c != 'q');
 
