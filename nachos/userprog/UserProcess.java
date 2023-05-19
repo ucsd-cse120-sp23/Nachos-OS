@@ -31,7 +31,7 @@ public class UserProcess {
 		// pageTable = new TranslationEntry[numPhysPages];
 		// for (int i = 0; i < numPhysPages; i++)
 		// 	pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
-		this.fileDescriptors = new OpenFile[MAX_NUM_FILE]; // FIXME
+		this.fileDescriptors = new OpenFile[MAX_NUM_FILE];
 		this.fileDescriptors[0] = UserKernel.console.openForReading();
 		this.fileDescriptors[1] = UserKernel.console.openForWriting();
 	}
@@ -148,6 +148,12 @@ public class UserProcess {
 	 * @return the number of bytes successfully transferred.
 	 */
 	public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+		// System.out.println("UserProcess.readVirtualMemory #1");
+
+		// Processor.translate vpn >= translations.length HAPPENS IF readVirtualMemory
+		// is Part 1 and writeVirtualMemory is Part 2
+		// Part 1
+		//------------------------------------------------
 		// Lib.assertTrue(offset >= 0 && length >= 0
 		// 		&& offset + length <= data.length);
 
@@ -159,59 +165,59 @@ public class UserProcess {
 
 		// int amount = Math.min(length, memory.length - vaddr);
 		// System.arraycopy(memory, vaddr, data, offset, amount);
+   		// // System.out.println("UserProcess.readVirtualMemory #8");
 
 		// return amount;
+		//-----------------------------------------------------------------
 
-		// 	Vivian's implementation ..................
-
+		// Part 2 Vivian
+		//----------------------------------------------------------------------------
 		Lib.assertTrue(offset >= 0 && length >= 0
 				&& offset + length <= data.length);
 
 		byte[] memory = Machine.processor().getMemory();
 
-		int amount = 0;
 		// for now, just assume that virtual addresses equal physical addresses
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
 
-		while (length > 0) {
-			int vpn = Processor.pageFromAddress(vaddr);
-			int vpnOffset = Processor.offsetFromAddress(vaddr);
-			if (vpn < 0 || vpn >= pageTable.length) {
+		int numBytesLeft = length;    
+		int currVaddr = vaddr;
+		int currVpn = 0;
+		int currVpnOffset = 0;
+		int currPhysAddr = 0;
+		int currNumToCopy = 0;
+		int numBytesCopied = 0;
+		int currDataOffset = offset;
+
+		while (numBytesLeft > 0) {
+			currVpn = Processor.pageFromAddress(currVaddr);
+			currVpnOffset = Processor.offsetFromAddress(currVaddr);
+			
+			if (currVpn < 0 || currVpn >= pageTable.length) {
 				return 0;
 			}
-			int phyAddr = pageTable[vpn].ppn * pageSize + vpnOffset;
-			pageTable[vpn].used = true; // TODO not sure!!
 
-			int minLength = Math.min(length, pageSize - vpnOffset);
-			amount += minLength;
-			vaddr += minLength;
-			offset += minLength; // FIXME: what happend if the offset pass the pageSize
-			System.arraycopy(memory, phyAddr, data, offset, minLength);
-			length -= minLength;
+			currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
+
+			// Same as writeVritualMemory, TA suggests NOT set USED in Project 2!!!!!!!!!!
+			// pageException and Process vpn >= translations.length usually only occur in
+			// PROJECT 3!!!!!!!!!!!! 
+			// pageTable[currVpn].used = true;
+
+			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
+			System.arraycopy(memory, currPhysAddr, data, currDataOffset, currNumToCopy);
+			numBytesCopied += currNumToCopy;
+			currDataOffset += currNumToCopy;
+			currVaddr += currNumToCopy;
+			numBytesLeft -= currNumToCopy;
 		}
 
 		// int amount = Math.min(length, memory.length - vaddr);
 		// System.arraycopy(memory, vaddr, data, offset, amount);
 
-		return amount;
-
-
-
-   
- 		//Lib.assertTrue(offset >= 0 && length >= 0
-		//		&& offset + length <= data.length);
-
-		//byte[] memory = Machine.processor().getMemory();
-
-		// for now, just assume that virtual addresses equal physical addresses
-		//if (vaddr < 0 || vaddr >= memory.length)
-		//	return 0;
-
-		//int amount = Math.min(length, memory.length - vaddr);
-		//System.arraycopy(memory, vaddr, data, offset, amount);
-
-		//return amount;
+		return numBytesCopied;
+		//----------------------------------------------------------------------------------
 	}
 
 	/**
@@ -241,66 +247,113 @@ public class UserProcess {
 	 * @return the number of bytes successfully transferred.
 	 */
 	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
- 
-// starter code's implementation
-//---------------------------------------------------------------------
-	//   Lib.assertTrue(offset >= 0 && length >= 0
-	// 			&& offset + length <= data.length);
+		//System.out.println("UserProcess.writeVirtualMemory #1 vaddr; " + vaddr);
+		//System.out.println("UserProcess.writeVirtualMemory #1 offset: " + offset);
+		//System.out.println("UserProcess.writeVirtualMemory #1 length: " + length);
+		//System.out.println("UserProcess.writeVirtualMemory #1 offset + length <= data.length: "+(offset + length <= data.length));
+		// starter code's implementation
+		//---------------------------------------------------------------------
+		//Lib.assertTrue(offset >= 0 && length >= 0
+		//		&& offset + length <= data.length);
 
-	// 	byte[] memory = Machine.processor().getMemory();
+		//byte[] memory = Machine.processor().getMemory();
 
-	// 	// for now, just assume that virtual addresses equal physical addresses
-	// 	if (vaddr < 0 || vaddr >= memory.length)
-	// 		return 0;
+		// for now, just assume that virtual addresses equal physical addresses
+		//if (vaddr < 0 || vaddr >= memory.length)
+		//	return 0;
 
-	// 	int amount = Math.min(length, memory.length - vaddr);
-	// 	System.arraycopy(data, offset, memory, vaddr, amount);
+		//int amount = Math.min(length, memory.length - vaddr);
+		//System.arraycopy(data, offset, memory, vaddr, amount);
 
-	// 	return amount;
+		//return amount;
+		//----------------------------------------------------------------------------
+		// Part 2 Way 2: Combining Vivian and Yang's
+		//---------------------------------------------------------
 
-// ----------------------------------------------------------------- Vivian's implementation
 
+		
 		Lib.assertTrue(offset >= 0 && length >= 0
-				&& offset + length <= data.length);
+		&& offset + length <= data.length);
 
+		//System.out.println("UserProcess.writeVirtualMemory #2");
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr >= memory.length)
+		if (vaddr < 0 || vaddr >= memory.length) {
 			return 0;
+		}
+    
+		// System.out.println("UserProcess.writeVirtualMemory #3");
+    
+		int numBytesLeft = length;    
+		int currVaddr = vaddr;
+		int currVpn = 0;
+		int currVpnOffset = 0;
+		int currPhysAddr = 0;
+		int currNumToCopy = 0;
+		int numBytesCopied = 0;
+		int currDataOffset = offset;
+		
+		//lock.acquire();
+		while (numBytesLeft > 0) {
+		//lock.acquire();
 
-		int amount = 0;
-		// int amount = Math.min(length, memory.length - vaddr);
-		// System.arraycopy(data, offset, memory, vaddr, amount);
-		while (length > 0) {
-			int vpn = Processor.pageFromAddress(vaddr);
-			int vpnOffset = Processor.offsetFromAddress(vaddr);
-			if (vpn < 0 || vpn >= pageTable.length) {
-				return amount;
+			if (currVpn < 0 || currVpn >= pageTable.length) {
+				return numBytesCopied;
 			}
 
-			if (pageTable[vpn].readOnly) {
-				return amount;
+			//System.out.println("UserProcess.writeVirtualMemory #4 currVaddr: " + currVaddr);
+
+			if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
+			//System.out.println("UserProcess.writeVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
+			//System.out.println("UserProcess.writeVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
+				return numBytesCopied;
 			}
 
-			int phyAddr = pageTable[vpn].ppn * pageSize + vpnOffset;
-			int minLength = Math.min(length, pageSize - vpnOffset);
+			//System.out.println("UserProcess.writeVirtualMemory #5");
+			currVpnOffset = Processor.offsetFromAddress(currVaddr);
+			currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
 
-			pageTable[vpn].used = true;
-			pageTable[vpn].dirty = true;
+			//      System.out.println("UserProcess.writeVirtualMemory #5.1 currPhysAddr: "+ currPhysAddr);
+			//      System.out.println("UserProcess.writeVirtualMemory #5.1 Processor.maxPages * pageSize: "+ Processor.maxPages * pageSize);
+			//      System.out.println("UserProcess.writeVirtualMemory #5.1 Processor.maxPages: "+ Processor.maxPages);
 
-			amount += minLength;
-			vaddr += minLength;
-			offset += minLength; // TODO: check
-			System.arraycopy(data, offset, memory, phyAddr, minLength);
+			//if (currPhysAddr >= memory.length) {
+			//  return numBytesCopied;
+			//}
+			//System.out.println("writeVirtualMemory#6 memory.length: " + memory.length);
+			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
+			//System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
+			if (currPhysAddr + currNumToCopy>= memory.length) {
+				return numBytesCopied;
+			}
 
-			length -= minLength;
+			System.arraycopy(data, currDataOffset, memory, currPhysAddr, currNumToCopy);
+
+
+			//------------------------------------------------------------
+			// According to TA, pageException and vpn >= translation.length usually just
+			// occurs in project 3. Probably due to change of used and dirty!!!!!!!!!!!!!!
+			// do NOT change those 2 in project 2!!!!!!!!!!!!!!!!!!
+			// pageTable[currVpn].used = true;
+			// pageTable[currVpn].dirty = true;
+
+			numBytesCopied += currNumToCopy;
+			currVpn += currNumToCopy; 	
+			numBytesLeft -= currNumToCopy;
+			currVaddr += currNumToCopy;
+			currDataOffset += currNumToCopy;
+
+			//lock.release();
 		}
 
-		return amount;
+	//    System.out.println("UserProcess.writeVirtualMemory #8");
 
-// part 2 implementation
-//-----------------------------------------------------------------------------
+	//lock.release();
+	return numBytesCopied;
+
+	// part 2 Way 1: Yang's implementation
+	//-----------------------------------------------------------------------------
 
     // Lib.assertTrue(offset >= 0 && length >= 0
     //     && offset + length <= data.length);
@@ -518,6 +571,9 @@ public class UserProcess {
 	 * @return <tt>true</tt> if the sections were successfully loaded.
 	 */
 	protected boolean loadSections() {
+
+		// starter code
+		//------------------------------------------------------------------
 		// if (numPages > Machine.processor().getNumPhysPages()) {
 		// 	coff.close();
 		// 	Lib.debug(dbgProcess, "\tinsufficient physical memory");
@@ -540,23 +596,30 @@ public class UserProcess {
 		// }
 
 		// return true;
+		//--------------------------------------------------------------------------
 
-		//Vivian's implementation
+		// Part 2: Vivian's implementation
+		lock.acquire();
 		if (numPages > UserKernel.freePhysicalPages.size()) {
 			coff.close();
 			Lib.debug(dbgProcess, "\tinsufficient physical memory");
 			return false;
 		}
+		//System.out.println("UserProcess.loadSections #1 numpages: "+numPages);
+		//System.out.println("UserProcess.loadSections #1.5 numpages: "+numPages);
+
 
 		pageTable = new TranslationEntry[numPages];
 		// initial pageTable with numPages
 		for (int i = 0; i < numPages; i++) {
 			int ppn = UserKernel.freePhysicalPages.removeFirst();
+			//System.out.println("UserProcess.loadSections #1 ppn: "+ppn);
 			pageTable[i] = new TranslationEntry(i, ppn, true, false, false, false);
+			//System.out.println("UserProcess.loadSections #2 pageTable[i].vpn: " + pageTable[i].vpn);
 		}
 
-		lock.acquire(); // TODO: check the usage of lock
 
+		//System.out.println("UserProcess.loadSections #2.05 coff.getNumSections(): " + coff.getNumSections());
 		// load sections
 		for (int s = 0; s < coff.getNumSections(); s++) {
 			CoffSection section = coff.getSection(s);
@@ -564,6 +627,8 @@ public class UserProcess {
 			Lib.debug(dbgProcess, "\tinitializing " + section.getName()
 					+ " section (" + section.getLength() + " pages)");
 
+			//      System.out.println("UserProcess.loadSections #2.1 pageTable.length: " + pageTable.length);
+			//      System.out.println("UserProcess.loadSections #2.2 section.getLength: " + section.getLength());
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
 
@@ -572,12 +637,18 @@ public class UserProcess {
 				// for now, just assume virtual addresses=physical addresses
 				// section.loadPage(i, vpn);
 				pageTable[i].vpn = vpn;
-				pageTable[i].readOnly = section.isReadOnly();
+				//System.out.println("UserProcess.loadSections #3 pageTable[i].vpn: " + pageTable[i].vpn);
+				//System.out.println("translations.legnth: "+translations.length);
+				//pageTable[vpn].readOnly = section.isReadOnly();
 				section.loadPage(i, pageTable[vpn].ppn);
 
 			}
 		}
+
+		//System.out.println("UserProcess.loadSections #4 BEFORELockRelease: ");
 		lock.release();
+
+		//System.out.println("UserProcess.loadSections #4 AFTERLockRelease: ");
 		return true;
 	}
 
@@ -585,7 +656,7 @@ public class UserProcess {
 	 * Release any resources allocated by <tt>loadSections()</tt>.
 	 */
 	protected void unloadSections() {
-		// TODO free the pages associated with this process
+
 		lock.acquire();
 		for (int i = 0; i < numPages; i++) {
 			UserKernel.freePhysicalPages.add(pageTable[i].ppn);
@@ -672,27 +743,7 @@ public class UserProcess {
 
 	}
 
-	// private int handleCreate(int name){
-	// 	String name1 = readVirtualMemoryString(name, MAX_FILE_NAME_LENGTH); 
-	// 	if(name1 == null){
-	// 		return -1;
-	// 	}
-	// 	OpenFile file = ThreadedKernel.fileSystem.open(name1, true);
-		
-	// 	if(file == null){ return -1;}
-		
-	// 	int filedesc = fileDescriptor(); //not sure how to get fd yet, I think it may depend on impl. of others
-	// 	//is checkname method req here? 
-	// 	if(filedesc==-1){
-	// 		file.close();
-	// 		return -1;
-	// 	}
-
-	// 	fdtable[filedesc] = file;
-	// 	return filedesc;
-	// }
-
-		/**
+	/**
 	 * Handle the creat() system call.
 	 */
 	private int handleCreate(int name) {
@@ -751,7 +802,7 @@ public class UserProcess {
 
 	}
 
-		/**
+	/**
 	 * Handle the open() system call.
 	 */
 
@@ -1118,8 +1169,6 @@ public class UserProcess {
 	/** The program being run by this process. */
 	protected Coff coff;
 
-	protected OpenFile[] fileDescriptors;
-
 	/** This process's page table. */
 	protected TranslationEntry[] pageTable;
 
@@ -1139,6 +1188,9 @@ public class UserProcess {
 	private static final int pageSize = Processor.pageSize;
 
 	private static final char dbgProcess = 'a';
+
+	// What we added
+	protected OpenFile[] fileDescriptors;
 
 	private static final int MAX_NUM_FILE = 16;
 

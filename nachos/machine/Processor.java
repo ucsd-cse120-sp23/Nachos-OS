@@ -312,8 +312,28 @@ public final class Processor {
 		if (!usingTLB) {
 			if (translations == null || vpn >= translations.length
 					|| translations[vpn] == null || !translations[vpn].valid) {
+				
+				if (translations == null) {
+					System.out.println("Processor.translate translations == null");
+				}
+
+				if (vpn >= translations.length) {
+					System.out.println("Processor.translate vpn >= translations.length");
+					System.out.println("vpn: "+ vpn);
+					System.out.println("translations.legnth: "+translations.length);
+				}
+
+				if (translations[vpn] == null) {
+					System.out.println("Processor.translate translations[vpn] == null");
+				}
+
+				if (!translations[vpn].valid) {
+					System.out.println("Processor.translate !translations[vpn].valid");
+				}
+
 				privilege.stats.numPageFaults++;
 				Lib.debug(dbgProcessor, "\t\tpage fault");
+				// System.out.println("Processor.tranlsate");
 				throw new MipsException(exceptionPageFault, vaddr);
 			}
 
@@ -605,9 +625,10 @@ public final class Processor {
 			if (hasBadVAddr)
 				writeRegister(regBadVAddr, badVAddr);
 
-			if (Lib.test(dbgDisassemble) || Lib.test(dbgFullDisassemble))
+			if (Lib.test(dbgDisassemble) || Lib.test(dbgFullDisassemble)) {
+        System.out.println("Processor.MipsException cause: " + cause);
 				System.out.println("exception: " + exceptionNames[cause]);
-
+      }
 			finishLoad();
 
 			Lib.assertTrue(exceptionHandler != null);
