@@ -775,6 +775,7 @@ public class UserProcess {
 		} 
 
 		//***********does that guarentee that "only a process's parent can join to it" */
+		// Does this guarantee parent is running .join()
 		UserProcess child = childMap.get(childPID);//check if this is childMap or regular map 
 		
 		//***************************** are the last 2 check correct? */
