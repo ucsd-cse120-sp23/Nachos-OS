@@ -24,12 +24,15 @@ public class UserProcess {
 	 * Allocate a new process.
 	 */
 	public UserProcess() {
-		int numPhysPages = Machine.processor().getNumPhysPages();
-		pageTable = new TranslationEntry[numPhysPages];
-		for (int i = 0; i < numPhysPages; i++) {
-		  pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
-    }
-    this.fileDescriptors = new OpenFile[MAX_NUM_FILE]; // FIXME
+		// For part 2, COMMENT OUT THOSE
+		//-------------------------------------------------------------------------------------
+		// int numPhysPages = Machine.processor().getNumPhysPages();
+		// pageTable = new TranslationEntry[numPhysPages];
+		// for (int i = 0; i < numPhysPages; i++) {
+		//   pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+    	// }
+		//--------------------------------------------------------------------------------------------
+    	this.fileDescriptors = new OpenFile[MAX_NUM_FILE];
       
  		this.fileDescriptors[0] = UserKernel.console.openForReading();
 		this.fileDescriptors[1] = UserKernel.console.openForWriting();
@@ -201,6 +204,11 @@ public class UserProcess {
 				return 0;
 			}
 
+		if (!pageTable[currVpn].valid) {
+			System.out.println("UserProcess.readVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
+			System.out.println("UserProcess.readVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
+			return numBytesCopied;
+		}
 			// *********************************DON'T set used in project 2!!!!!!!!!!!!!!!!!
 			//***************************** otherwwise, pageexception and vpn >= translation.length
 			//pageTable[currVpn].used = true; // TODO not sure!!
