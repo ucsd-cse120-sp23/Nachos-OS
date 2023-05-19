@@ -287,6 +287,7 @@ public class KThread {
 		Lib.assertTrue(this != currentThread); // a thread cannot join itself
 		//Lib.assertTrue(Machine.interrupt().disabled());
 		// check if this method has already been called once
+		System.out.println(this.name + ".hasJoin: "+this.hasJoin);
 		Lib.assertTrue(!this.hasJoin);
 		this.hasJoin = true; // TODO one join on multiple; multiple join on one
 
@@ -304,35 +305,7 @@ public class KThread {
 
 	}
 
-	    // Place Join test code in the KThread class and invoke test methods
-    // from KThread.selfTest().
-    
-    // Simple test for the situation where the child finishes before
-    // the parent calls join on it.
-    
-    private static void joinTest1 () {
-		KThread child1 = new KThread( new Runnable () {
-			public void run() {
-				System.out.println("I (heart) Nachos!");
-			}
-			});
-		child1.setName("child1").fork();
-	
-		// We want the child to finish before we call join.  Although
-		// our solutions to the problems cannot busy wait, our test
-		// programs can!
-	
-		for (int i = 0; i < 5; i++) {
-			System.out.println ("busy...");
-			KThread.currentThread().yield();
-		}
 
-	
-		child1.join();
-		System.out.println("After joining, child1 should be finished.");
-		System.out.println("is it? " + (child1.status == statusFinished));
-		Lib.assertTrue((child1.status == statusFinished), " Expected child1 to be finished.");
-		}
 
 	/**
 	 * Create the idle thread. Whenever there are no threads ready to be run,
@@ -438,32 +411,7 @@ public class KThread {
 		Lib.assertTrue(this == currentThread);
 	}
 
-	private static class PingTest implements Runnable {
-		PingTest(int which) {
-			this.which = which;
-		}
 
-		public void run() {
-			for (int i = 0; i < 5; i++) {
-				System.out.println("*** thread " + which + " looped " + i
-						+ " times");
-				currentThread.yield();
-			}
-		}
-
-		private int which;
-	}
-
-	/**
-	 * Tests whether this module is working.
-	 */
-	public static void selfTest() {
-		Lib.debug(dbgThread, "Enter KThread.selfTest");
-
-		new KThread(new PingTest(1)).setName("forked thread").fork();
-		new PingTest(0).run();
-		joinTest1();
-	}
 
 	private static final char dbgThread = 't';
 
@@ -522,8 +470,111 @@ public class KThread {
 	private static KThread idleThread = null;
 
 
-
 	// What we added
-	// private Queue
+
+	// Place Join test code in the KThread class and invoke test methods
+    // from KThread.selfTest().
+    
+    // Simple test for the situation where the child finishes before
+    // the parent calls join on it.
+    
+    private static void joinTest1 () {
+		KThread child1 = new KThread( new Runnable () {
+			public void run() {
+				System.out.println("I (heart) Nachos!");
+			}
+		});
+		child1.setName("child1").fork();
+	
+		// We want the child to finish before we call join.  Although
+		// our solutions to the problems cannot busy wait, our test
+		// programs can!
+	
+		for (int i = 0; i < 5; i++) {
+			System.out.println ("busy...");
+			KThread.currentThread().yield();
+		}
+
+	
+		child1.join();
+		System.out.println("After joining, child1 should be finished.");
+		System.out.println("is it? " + (child1.status == statusFinished));
+		Lib.assertTrue((child1.status == statusFinished), " Expected child1 to be finished.");
+	}
+
+	private static class PingTest implements Runnable {
+		PingTest(int which) {
+			this.which = which;
+		}
+
+		public void run() {
+			for (int i = 0; i < 5; i++) {
+				System.out.println("*** thread " + which + " looped " + i
+						+ " times");
+				currentThread.yield();
+			}
+		}
+
+		private int which;
+	}
+
+	private static void joinTest2 () {
+        final KThread child1 = new KThread( new Runnable () {
+            public void run() {
+                System.out.println("child 1: I (heart) Nachos!");
+            }
+        });
+        child1.setName("child1").fork();
+
+
+        KThread child2 = new KThread( new Runnable () {
+            public void run() {
+                System.out.println("child 2: I (heart) Nachos!");
+                child1.join();
+            }
+        });
+        child2.setName("child2").fork();
+
+        KThread child3 = new KThread( new Runnable () {
+            public void run() {
+                System.out.println("child3: I (heart) Nachos!");
+                child1.join();
+            }
+        });
+		child3.setName("child3").fork();
+		
+        // child3.setName("child2").fork();
+        // We want the child to finish before we call join.  Although
+        // our solutions to the problems cannot busy wait, our test
+        // programs can!
+
+        // for (int i = 0; i < 5; i++) {
+        //     System.out.println ("busy...");
+        //     KThread.currentThread().yield();
+        // }
+
+		// expected to cause assertError, since child2 and child3 join child1
+        // child1.join();
+
+		// either of the following causes assertError
+		// child2.join();
+		// child3.join();
+
+        System.out.println("After joining, child1 should be finished.");
+        System.out.println("is it? " + (child1.status == statusFinished));
+        // Lib.assertTrue((child1.status == statusFinished), " Expected child1 to be finished.");
+    }
+
+	/**
+	 * Tests whether this module is working.
+	 */
+	public static void selfTest() {
+		Lib.debug(dbgThread, "Enter KThread.selfTest");
+
+		// new KThread(new PingTest(1)).setName("forked thread").fork();
+		// new PingTest(0).run();
+		// joinTest1();
+		joinTest2();
+	}
 
 }

@@ -6,6 +6,9 @@ import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 
+// We added
+import java.util.*;
+
 /**
  * A kernel that can support multiple user processes.
  */
@@ -42,6 +45,7 @@ public class UserKernel extends ThreadedKernel {
 	 * Test the console device.
 	 */
 	public void selfTest() {
+     //Those CAN be commented out for testing part 1 more efficiently
 		super.selfTest();
 
 		System.out.println("Testing the console device. Typed characters");
@@ -134,4 +138,9 @@ public class UserKernel extends ThreadedKernel {
 
 	// dummy variables to make javac smarter
 	private static Coff dummy1 = null;
+
+	// part2
+	//----------------------------------------------------------
+	// initialized static linkedlist to store free physical pages
+	public static LinkedList<Integer> freePhysicalPages = new LinkedList<Integer>();
 }

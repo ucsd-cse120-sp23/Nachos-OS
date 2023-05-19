@@ -27,10 +27,10 @@ STDLIB_H = stdio.h stdlib.h ag.h
 STDLIB_C = stdio.c stdlib.c
 STDLIB_O = start.o stdio.o stdlib.o
 
-LIB = assert atoi printf readline stdio strncmp strcat strcmp strcpy strlen memcpy memset rand
+LIB = assert atoi printf readline stdio strncmp strcat strcmp strcpy strlen memcpy memset rand 
 NLIB = libnachos.a
 
-TARGETS = halt sh matmult sort echo cat cp mv rm
+TARGETS = halt sh matmult sort echo cat cp mv rm write1 write4 write10 snake
 
 .SECONDARY: $(patsubst %.c,%.o,$(wildcard *.c))
 
