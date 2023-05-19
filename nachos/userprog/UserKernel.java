@@ -39,6 +39,10 @@ public class UserKernel extends ThreadedKernel {
 		for (int index = 0; index < Machine.processor().getNumPhysPages(); index++) {
 			freePhysicalPages.add(index); // 0 - number of physical pages - 1
 		}
+		processCount = 0;
+		processID = 0;
+		processIDLock = new Lock();
+		processCountLock = new Lock();
 	}
 
 	/**
@@ -106,6 +110,9 @@ public class UserKernel extends ThreadedKernel {
 
 		UserProcess process = UserProcess.newUserProcess();
 
+		//for part3, here we store the root process
+		root = process;
+
 		String shellProgram = Machine.getShellProgramName();
 		if (!process.execute(shellProgram, new String[] {})) {
 			System.out.println("Could not find executable '" +
@@ -140,4 +147,10 @@ public class UserKernel extends ThreadedKernel {
 	//----------------------------------------------------------
 	// initialized static linkedlist to store free physical pages
 	public static LinkedList<Integer> freePhysicalPages = new LinkedList<Integer>();
+
+	public static int processID;
+	public static int processCount;
+	public static Lock processCountLock;
+	public static Lock processIDLock;
+	public static UserProcess root;
 }

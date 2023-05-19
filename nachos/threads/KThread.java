@@ -287,19 +287,22 @@ public class KThread {
 		Lib.assertTrue(this != currentThread); // a thread cannot join itself
 		//Lib.assertTrue(Machine.interrupt().disabled());
 		// check if this method has already been called once
-		System.out.println(this.name + ".hasJoin: "+this.hasJoin);
+		//System.out.println(this.name + ".hasJoin: "+this.hasJoin);
 		Lib.assertTrue(!this.hasJoin);
 		this.hasJoin = true; // TODO one join on multiple; multiple join on one
 
+		System.out.println(this.status);
 		// this: is the current instance of object
 		// if current running is b, and we call a.join(), this:a; currentThread: b
 		if (this.status != statusFinished) {
+			
 			// then B waits inside of join until A finishes;
 			this.callingThread = currentThread;
 			boolean status = Machine.interrupt().disable();
 			currentThread.sleep(); // in sleep we need to disable interrupt first!!!!!!
 			Machine.interrupt().restore(status);
 		}
+		System.out.println("hhhhhh");
 		// If A has already finished, then B returns immediately from join without
 		// waiting.
 
