@@ -220,12 +220,12 @@ public class UserProcess {
 
 
 			if (currVpn < 0 || currVpn >= pageTable.length) {
-				return 0;
+				return numBytesCopied;
 			}
 
 		if (!pageTable[currVpn].valid) {
-			System.out.println("UserProcess.readVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
-			System.out.println("UserProcess.readVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
+			//System.out.println("UserProcess.readVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
+			//System.out.println("UserProcess.readVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
 			return numBytesCopied;
 		}
 			// *********************************DON'T set used in project 2!!!!!!!!!!!!!!!!!
@@ -246,6 +246,11 @@ public class UserProcess {
 
 		return numBytesCopied;
 	}
+
+
+
+
+
 
 	/**
 	 * Transfer all data from the specified array to this process's virtual
@@ -339,8 +344,8 @@ public class UserProcess {
 		currVpn = Processor.pageFromAddress(currVaddr);
 
 		if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
-			System.out.println("UserProcess.writeVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
-			System.out.println("UserProcess.writeVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
+			//System.out.println("UserProcess.writeVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
+			//System.out.println("UserProcess.writeVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
 			return numBytesCopied;
 		}
 
@@ -548,12 +553,11 @@ public class UserProcess {
 			//      System.out.println("UserProcess.loadSections #2.2 section.getLength: " + section.getLength());
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
-			    pageTable[vpn].ppn = UserKernel.freePhysicalPages.removeFirst();
-				
-
-				if (vpn >= pageTable.length) {
-					System.out.println("UserProcess.loadSections #4 vpn >= pageTable.length");
+				if (vpn < 0 || vpn >= pageTable.length) {
+					//System.out.println("UserProcess.loadSections #4 vpn >= pageTable.length");
+					return false;
 				}
+				pageTable[vpn].ppn = UserKernel.freePhysicalPages.removeFirst();
 
 				// System.out.println("UserProcess.loadSections #3 vpn: " + vpn);
 
@@ -759,6 +763,7 @@ public class UserProcess {
 		UserProcess child = newUserProcess();
 		childMap.put(child.PID, child);
 		child.parent = this; 
+		statusMap.put(child.PID, null);
 		if(!(child.execute(filename, args))){
 			return -1; //returns if program unable to be loaded
 		}
@@ -798,6 +803,7 @@ public class UserProcess {
 		
 		Integer childPIDD = Integer.valueOf(childPID);
 		if(!statusMap.containsKey(childPIDD)){
+			//System.out.println("debug echo 22222222222222222222222222222");
 		 	return 0; //unable to retrieve status of process
 		}
 		
@@ -827,7 +833,7 @@ public class UserProcess {
 	 * Handle the creat() system call.
 	 */
 	private int handleCreate(int name) {
-        System.out.println("handleCreate #1");
+        //System.out.println("handleCreate #1");
 
 		if (name < 0) {
 			return -1;
@@ -1232,8 +1238,10 @@ public class UserProcess {
 				break;
 
 			default:
+				//System.out.println("UserProcess 1236 Processor.exceptionNames[cause]: "+Processor.exceptionNames[cause]);
 				Lib.debug(dbgProcess, "Unexpected exception: "
 						+ Processor.exceptionNames[cause]);
+
 				Lib.assertNotReached("Unexpected exception");
 		}
 	}

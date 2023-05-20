@@ -50,20 +50,20 @@ public class UserKernel extends ThreadedKernel {
 	 */
 	public void selfTest() {
      	//Those CAN be commented out for testing part 1 more efficiently
-		super.selfTest();
+		
+		// super.selfTest();
+		// System.out.println("Testing the console device. Typed characters");
+		// System.out.println("will be echoed until q is typed.");
 
-		System.out.println("Testing the console device. Typed characters");
-		System.out.println("will be echoed until q is typed.");
+		// char c;
 
-		char c;
+		// do {
+		// 	c = (char) console.readByte(true);
+		// 	// c = 'h';
+		// 	console.writeByte(c);
+		// } while (c != 'q');
 
-		do {
-			c = (char) console.readByte(true);
-			// c = 'h';
-			console.writeByte(c);
-		} while (c != 'q');
-
-		System.out.println("");
+		// System.out.println("");
 	}
 
 	/**

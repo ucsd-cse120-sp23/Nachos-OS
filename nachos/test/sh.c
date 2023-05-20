@@ -176,6 +176,7 @@ void runline(char* line) {
 		break;
 	    case 0:
 		printf("\n[%d] Unhandled exception\n", pid);
+		//printf("echo 11111111111111111111111111111");
 		break;
 	    case 1:
 		printf("\n[%d] Done (%d)\n", pid, status);
