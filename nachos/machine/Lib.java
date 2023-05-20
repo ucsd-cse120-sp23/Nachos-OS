@@ -125,8 +125,9 @@ public final class Lib {
 	 * @param message the debug message.
 	 */
 	public static void debug(char flag, String message) {
-		if (test(flag))
+		if (test(flag)) {
 			System.out.println(message);
+		}
 	}
 
 	/**

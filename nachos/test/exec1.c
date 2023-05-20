@@ -10,7 +10,7 @@
 int
 main (int argc, char *argv[])
 {
-    char *prog = "join1.coff";
+    char *prog = "write4.coff";
     int pid;
 
     pid = exec (prog, 0, 0);

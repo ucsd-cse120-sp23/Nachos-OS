@@ -302,7 +302,9 @@ public class KThread {
 			currentThread.sleep(); // in sleep we need to disable interrupt first!!!!!!
 			Machine.interrupt().restore(status);
 		}
-		System.out.println("hhhhhh");
+
+		// echo
+		//System.out.println("debug echo 00000000000000000000");
 		// If A has already finished, then B returns immediately from join without
 		// waiting.
 
