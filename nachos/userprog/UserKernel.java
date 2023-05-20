@@ -144,7 +144,7 @@ public class UserKernel extends ThreadedKernel {
 	// dummy variables to make javac smarter
 	private static Coff dummy1 = null;
 
-	// part2
+	// Part 2
 	//----------------------------------------------------------
 	// initialized static linkedlist to store free physical pages
 	public static LinkedList<Integer> freePhysicalPages = new LinkedList<Integer>();

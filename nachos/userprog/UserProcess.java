@@ -44,12 +44,11 @@ public class UserProcess {
 		this.fileDescriptors[0] = UserKernel.console.openForReading();
 		this.fileDescriptors[1] = UserKernel.console.openForWriting();
 
+		// Part 3
+		//--------------------------------------------------------
 		UserKernel.processIDLock.acquire();
 		this.PID = UserKernel.processID++;
 		UserKernel.processIDLock.release();
-
-		// Part 3
-		//--------------------------------------------------------
 		lock = new Lock();
 		childMap = new HashMap<Integer, UserProcess>();
 		statusMap = new HashMap<Integer, Integer>();
@@ -555,7 +554,7 @@ public class UserProcess {
 				if (vpn >= pageTable.length) {
 					System.out.println("UserProcess.loadSections #4 vpn >= pageTable.length");
 				}
-				// pageTable[vpn] = new TranslationEntry(i, ppn, true, false, false, false);
+
 				// System.out.println("UserProcess.loadSections #3 vpn: " + vpn);
 
 				// pageTable[count] = new TranslationEntry(count, ppn, true,
@@ -1170,7 +1169,6 @@ public class UserProcess {
 		case syscallExit:
 			return handleExit(a0);
       
-
 			case syscallExec:
 				// a0: name
 				// a1: argc
