@@ -214,7 +214,7 @@ public class UserProcess {
 		int numBytesCopied = 0;
 
 
-		while (numBytesLeft  > 0) {
+		while (numBytesLeft  > 0 && currVaddr < numPages * pageSize) {
 			currVpn = Processor.pageFromAddress(currVaddr);
 			currVpnOffset = Processor.offsetFromAddress(currVaddr);
 			currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
@@ -259,7 +259,7 @@ public class UserProcess {
 	public int writeVirtualMemory(int vaddr, byte[] data) {
 		return writeVirtualMemory(vaddr, data, 0, data.length);
 	}
-
+	
 	/**
 	 * Transfer data from the specified array to this process's virtual memory.
 	 * This method handles address translation details. This method must
@@ -326,7 +326,7 @@ public class UserProcess {
     
 	//*******************************Do we need a lock and why? */
     //lock.acquire();
-	while (numBytesLeft > 0) {
+	while (numBytesLeft > 0 && currVaddr < numPages * pageSize) {
 
 		//*******************************Do we need a lock and why? */
 		//lock.acquire();
@@ -474,6 +474,8 @@ public class UserProcess {
 		return true;
 	}
 
+	
+
 	/**
 	 * Allocates memory for this process, and loads the COFF sections into
 	 * memory. If this returns successfully, the process will definitely be run
@@ -510,7 +512,7 @@ public class UserProcess {
 		// return true;
 		//-------------------------------------------------------------------------
 
-		lock.acquire();
+		
 
 		if (numPages > UserKernel.freePhysicalPages.size()) {
 			coff.close();
@@ -520,14 +522,13 @@ public class UserProcess {
 		//System.out.println("UserProcess.loadSections #1 numpages: "+numPages);
 		//System.out.println("UserProcess.loadSections #1.5 numpages: "+numPages);
 
-
+		lock.acquire();
 
 		pageTable = new TranslationEntry[numPages];
 		// initial pageTable with numPages
 		for (int i = 0; i < numPages; i++) {
-			int ppn = UserKernel.freePhysicalPages.removeFirst();
 			//System.out.println("UserProcess.loadSections #1 ppn: "+ppn);
-			pageTable[i] = new TranslationEntry(i, ppn, true, false, false, false);
+			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
 			//System.out.println("UserProcess.loadSections #2 pageTable[i].vpn: " + pageTable[i].vpn);
 		}
 
@@ -548,10 +549,13 @@ public class UserProcess {
 			//      System.out.println("UserProcess.loadSections #2.2 section.getLength: " + section.getLength());
 			for (int i = 0; i < section.getLength(); i++) {
 				int vpn = section.getFirstVPN() + i;
+			    pageTable[vpn].ppn = UserKernel.freePhysicalPages.removeFirst();
+				
 
 				if (vpn >= pageTable.length) {
 					System.out.println("UserProcess.loadSections #4 vpn >= pageTable.length");
 				}
+				// pageTable[vpn] = new TranslationEntry(i, ppn, true, false, false, false);
 				// System.out.println("UserProcess.loadSections #3 vpn: " + vpn);
 
 				// pageTable[count] = new TranslationEntry(count, ppn, true,
@@ -560,6 +564,8 @@ public class UserProcess {
 				// section.loadPage(i, vpn);
 
 				pageTable[vpn].vpn = vpn;
+				pageTable[vpn].valid = true;
+				
 				// System.out.println("UserProcess.loadSections #3 pageTable[i].vpn: " + pageTable[i].vpn);
 				// System.out.println("translations.legnth: "+translations.length);
 				pageTable[vpn].readOnly = section.isReadOnly();
@@ -570,6 +576,13 @@ public class UserProcess {
 		}
 
 
+		//deal with stack page and argument page
+		for (int i = numPages - 9; i < numPages; i++) {
+			pageTable[i].ppn = UserKernel.freePhysicalPages.removeFirst();
+			pageTable[i].valid = true;
+		}
+
+	
 		//System.out.println("UserProcess.loadSections #4 BEFORELockRelease: ");
 		lock.release();
 
@@ -779,7 +792,7 @@ public class UserProcess {
 		
 		//***************************** are the last 2 check correct? */
 		// should child.parent == this be child.parent != this????????????
-		if(child == null || child.parent != null || child.parent == this){ //remove == this?
+		if(child == null){ //remove == this?
 			return -1; //can go through hashmap to find child process, if doesn't find return error
 		}
 
@@ -883,10 +896,7 @@ public class UserProcess {
 
 	}
 
-		/**
-	 * Handle the open() system call.
-	 */
-
+	
 
 	/**
 	 * Handle the read() system call.
@@ -944,7 +954,7 @@ public class UserProcess {
 
 
 		// number of bytes transferred from Physical Memory into Virtual Memory
-		int numBytesWrittenToVrMem = writeVirtualMemory(buffer, fileContent);
+		int numBytesWrittenToVrMem = writeVirtualMemory(buffer, fileContent, 0, numBytesReadFromFile);
 		// System.out.println("FileToVrMem #8 numBytesWrittenToVrMem: " + numBytesWrittenToVrMem);
 
 		return numBytesWrittenToVrMem;
