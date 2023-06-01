@@ -9,5 +9,6 @@
 int
 main (int argc, char *argv[])
 {
+    printf("nihAO");
     exit (123);
 }

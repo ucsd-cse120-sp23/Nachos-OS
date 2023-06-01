@@ -223,11 +223,23 @@ public class UserProcess {
 				return numBytesCopied;
 			}
 
-		if (!pageTable[currVpn].valid) {
-			//System.out.println("UserProcess.readVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
-			//System.out.println("UserProcess.readVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
-			return numBytesCopied;
-		}
+			// if (!pageTable[currVpn].valid) {
+			// 	//System.out.println("UserProcess.readVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
+			// 	//System.out.println("UserProcess.readVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
+			// 	return numBytesCopied;
+			// }
+
+			// Project 3 Task 1-4
+			//--------------------------------------------------------------------------------
+			if (!pageTable[currVpn].valid) {
+				// call HANDLEPAGEFAULT, NOT handleException
+				//***********************Should this be currVaddr?
+				handlePageFault(currVaddr);
+			}
+
+
+			//--------------------------------------------------------------------------------------
+
 			// *********************************DON'T set used in project 2!!!!!!!!!!!!!!!!!
 			//***************************** otherwwise, pageexception and vpn >= translation.length
 			//	pageTable[currVpn].used = true;
@@ -343,11 +355,27 @@ public class UserProcess {
 		// if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
 		currVpn = Processor.pageFromAddress(currVaddr);
 
-		if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
-			//System.out.println("UserProcess.writeVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
-			//System.out.println("UserProcess.writeVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
+		// Project 2
+		//-----------------------------------------------------------------------------------------------
+		// if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
+		// 	//System.out.println("UserProcess.writeVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
+		// 	//System.out.println("UserProcess.writeVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
+		// 	return numBytesCopied;
+		// }
+		//-----------------------------------------------------------------------------------------------
+		
+		// Project 3 Task 1-4
+		//--------------------------------------------------------------------------------
+		if (!pageTable[currVpn].valid) {
+			// call HANDLEPAGEFAULT, NOT handleException
+			//***********************Should this be currVaddr?
+			handlePageFault(currVaddr);
+		}
+
+		if (pageTable[currVpn].readOnly) {
 			return numBytesCopied;
 		}
+		//--------------------------------------------------------------------------------------
 
 		//System.out.println("UserProcess.writeVirtualMemory #5");
 		currVpnOffset = Processor.offsetFromAddress(currVaddr);
@@ -532,69 +560,75 @@ public class UserProcess {
 		// initial pageTable with numPages
 		for (int i = 0; i < numPages; i++) {
 			//System.out.println("UserProcess.loadSections #1 ppn: "+ppn);
-			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+
+			// In project 2, valid is set to true.
+			// In project 3, according to Task 1-1, set it to be INVALID
+			//***************************************************
+			pageTable[i] = new TranslationEntry(i, i, false, false, false, false);
 			//System.out.println("UserProcess.loadSections #2 pageTable[i].vpn: " + pageTable[i].vpn);
 		}
 
 		// *********************lock
 		// TODO: check the usage of lock
 
+		// In Project 3, we move that part to handleException.
+		//---------------------------------------------------------
+		// we do the samething in helper function handlePageFault and call it in handleException
+		// // System.out.println("UserProcess.loadSections #2.05 coff.getNumSections(): " + coff.getNumSections());
 
-		// System.out.println("UserProcess.loadSections #2.05 coff.getNumSections(): " + coff.getNumSections());
+		// // load sections
+		// for (int s = 0; s < coff.getNumSections(); s++) {
+		// 	CoffSection section = coff.getSection(s);
 
-		// load sections
-		for (int s = 0; s < coff.getNumSections(); s++) {
-			CoffSection section = coff.getSection(s);
+		// 	Lib.debug(dbgProcess, "\tinitializing " + section.getName()
+		// 	+ " section (" + section.getLength() + " pages)");
 
-			Lib.debug(dbgProcess, "\tinitializing " + section.getName()
-			+ " section (" + section.getLength() + " pages)");
+		// 	//      System.out.println("UserProcess.loadSections #2.1 pageTable.length: " + pageTable.length);
+		// 	//      System.out.println("UserProcess.loadSections #2.2 section.getLength: " + section.getLength());
+		// 	for (int i = 0; i < section.getLength(); i++) {
+		// 		int vpn = section.getFirstVPN() + i;
+		// 		if (vpn < 0 || vpn >= pageTable.length) {
+		// 			//System.out.println("UserProcess.loadSections #4 vpn >= pageTable.length");
+		// 			return false;
+		// 		}
+		// 		pageTable[vpn].ppn = UserKernel.freePhysicalPages.removeFirst();
 
-			//      System.out.println("UserProcess.loadSections #2.1 pageTable.length: " + pageTable.length);
-			//      System.out.println("UserProcess.loadSections #2.2 section.getLength: " + section.getLength());
-			for (int i = 0; i < section.getLength(); i++) {
-				int vpn = section.getFirstVPN() + i;
-				if (vpn < 0 || vpn >= pageTable.length) {
-					//System.out.println("UserProcess.loadSections #4 vpn >= pageTable.length");
-					return false;
-				}
-				pageTable[vpn].ppn = UserKernel.freePhysicalPages.removeFirst();
+		// 		// System.out.println("UserProcess.loadSections #3 vpn: " + vpn);
 
-				// System.out.println("UserProcess.loadSections #3 vpn: " + vpn);
+		// 		// pageTable[count] = new TranslationEntry(count, ppn, true,
+		// 		// section.isReadOnly(), false, false);
+		// 		// for now, just assume virtual addresses=physical addresses
+		// 		// section.loadPage(i, vpn);
 
-				// pageTable[count] = new TranslationEntry(count, ppn, true,
-				// section.isReadOnly(), false, false);
-				// for now, just assume virtual addresses=physical addresses
-				// section.loadPage(i, vpn);
-
-				pageTable[vpn].vpn = vpn;
-				pageTable[vpn].valid = true;
+		// 		pageTable[vpn].vpn = vpn;
+		// 		pageTable[vpn].valid = true;
 				
-				// System.out.println("UserProcess.loadSections #3 pageTable[i].vpn: " + pageTable[i].vpn);
-				// System.out.println("translations.legnth: "+translations.length);
-				pageTable[vpn].readOnly = section.isReadOnly();
+		// 		// System.out.println("UserProcess.loadSections #3 pageTable[i].vpn: " + pageTable[i].vpn);
+		// 		// System.out.println("translations.legnth: "+translations.length);
+		// 		pageTable[vpn].readOnly = section.isReadOnly();
 
-				section.loadPage(i, pageTable[vpn].ppn);
+		// 		section.loadPage(i, pageTable[vpn].ppn);
 
-			}
-		}
+		// 	}
+		// }
 
 
-		//deal with stack page and argument page
-		for (int i = numPages - 9; i < numPages; i++) {
-			pageTable[i].ppn = UserKernel.freePhysicalPages.removeFirst();
-			pageTable[i].valid = true;
-		}
+		// //deal with stack page and argument page
+		// for (int i = numPages - 9; i < numPages; i++) {
+		// 	pageTable[i].ppn = UserKernel.freePhysicalPages.removeFirst();
+		// 	pageTable[i].valid = true;
+		// }
 
 	
-		//System.out.println("UserProcess.loadSections #4 BEFORELockRelease: ");
-		lock.release();
+		// //System.out.println("UserProcess.loadSections #4 BEFORELockRelease: ");
+		// lock.release();
 
-		UserKernel.processCountLock.acquire();
-		UserKernel.processCount++;
-		UserKernel.processCountLock.release();
+		// UserKernel.processCountLock.acquire();
+		// UserKernel.processCount++;
+		// UserKernel.processCountLock.release();
 
-		//System.out.println("UserProcess.loadSections #4 AFTERLockRelease: ");
-
+		// //System.out.println("UserProcess.loadSections #4 AFTERLockRelease: ");
+		//---------------------------------------------------------
 		return true;
 
     
@@ -1216,6 +1250,90 @@ public class UserProcess {
 
 	}
 
+	private boolean handlePageFault(int faultVirtualAddress) {
+
+		// System.out.println("UserProcess.loadSections #2.05 coff.getNumSections(): " + coff.getNumSections());
+		int faultVPN = Processor.pageFromAddress(faultVirtualAddress);
+
+		// load sections
+		for (int s = 0; s < coff.getNumSections(); s++) {
+			CoffSection section = coff.getSection(s);
+
+			Lib.debug(dbgProcess, "\tinitializing " + section.getName()
+			+ " section (" + section.getLength() + " pages)");
+
+			// moved that from inner loop to there. Is that OK?
+			//**************************************************
+			int firstVPN = section.getFirstVPN();
+			//************************************************ 
+
+			//      System.out.println("UserProcess.loadSections #2.1 pageTable.length: " + pageTable.length);
+			//      System.out.println("UserProcess.loadSections #2.2 section.getLength: " + section.getLength());
+			for (int i = 0; i < section.getLength(); i++) {
+				int vpn = firstVPN + i;
+
+
+
+				if (vpn < 0 || vpn >= pageTable.length) {
+					//System.out.println("UserProcess.loadSections #4 vpn >= pageTable.length");
+					return false;
+				}
+
+				// Project 3 Part 1-3
+				//*********************************************
+				// this is a STACK
+				if (vpn != faultVPN) {
+					// not dirty, then zero-fill 
+					if (!pageTable[vpn].dirty) {
+						
+					}
+
+					// dirty, deal this in TASK 2
+				}
+				//*****************************************
+
+
+				pageTable[vpn].ppn = UserKernel.freePhysicalPages.removeFirst();
+
+				// System.out.println("UserProcess.loadSections #3 vpn: " + vpn);
+
+				// pageTable[count] = new TranslationEntry(count, ppn, true,
+				// section.isReadOnly(), false, false);
+				// for now, just assume virtual addresses=physical addresses
+				// section.loadPage(i, vpn);
+
+				pageTable[vpn].vpn = vpn;
+				pageTable[vpn].valid = true;
+				
+				// System.out.println("UserProcess.loadSections #3 pageTable[i].vpn: " + pageTable[i].vpn);
+				// System.out.println("translations.legnth: "+translations.length);
+				pageTable[vpn].readOnly = section.isReadOnly();
+
+				section.loadPage(i, pageTable[vpn].ppn);
+
+			}
+		}
+
+
+		//deal with stack page and argument page
+		for (int i = numPages - 9; i < numPages; i++) {
+			pageTable[i].ppn = UserKernel.freePhysicalPages.removeFirst();
+			pageTable[i].valid = true;
+		}
+
+	
+		//System.out.println("UserProcess.loadSections #4 BEFORELockRelease: ");
+		lock.release();
+
+		UserKernel.processCountLock.acquire();
+		UserKernel.processCount++;
+		UserKernel.processCountLock.release();
+
+		//System.out.println("UserProcess.loadSections #4 AFTERLockRelease: ");
+		return true;
+
+	}
+
 	/**
 	 * Handle a user exception. Called by <tt>UserKernel.exceptionHandler()</tt>
 	 * . The <i>cause</i> argument identifies which exception occurred; see the
@@ -1227,6 +1345,15 @@ public class UserProcess {
 		Processor processor = Machine.processor();
 
 		switch (cause) {
+			// Project 3
+			//-------------------------------
+			case Processor.exceptionPageFault:
+				handlePageFault();
+
+			//---------------------------
+
+			// Project 1, 2, starter code with some debug 
+			//--------------------------------------
 			case Processor.exceptionSyscall:
 				int result = handleSyscall(processor.readRegister(Processor.regV0),
 						processor.readRegister(Processor.regA0),
@@ -1238,11 +1365,13 @@ public class UserProcess {
 				break;
 
 			default:
+				// debug
 				//System.out.println("UserProcess 1236 Processor.exceptionNames[cause]: "+Processor.exceptionNames[cause]);
 				Lib.debug(dbgProcess, "Unexpected exception: "
 						+ Processor.exceptionNames[cause]);
 
 				Lib.assertNotReached("Unexpected exception");
+			//------------------------------------------------------------------
 		}
 	}
 
