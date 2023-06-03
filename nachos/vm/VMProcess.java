@@ -39,7 +39,25 @@ public class VMProcess extends UserProcess {
 	 * @return <tt>true</tt> if successful.
 	 */
 	protected boolean loadSections() {
-		return super.loadSections();
+		if (numPages > Machine.processor().getNumPhysPages()) {
+			coff.close();
+			Lib.debug(dbgProcess, "\tinsufficient physical memory");
+			return false;
+		}
+		//System.out.println("UserProcess.loadSections #1 numpages: "+numPages);
+		//System.out.println("UserProcess.loadSections #1.5 numpages: "+numPages);
+
+
+		pageTable = new TranslationEntry[numPages];
+		// initial pageTable with numPages
+		for (int i = 0; i < numPages; i++) {
+			//System.out.println("UserProcess.loadSections #1 ppn: "+ppn);
+
+			// In project 3, according to Task 1-1, set it to be INVALID
+			pageTable[i] = new TranslationEntry(i, i, false, false, false, false);
+			//System.out.println("UserProcess.loadSections #2 pageTable[i].vpn: " + pageTable[i].vpn);
+		}
+		return true;
 	}
 
 	/**
@@ -47,6 +65,126 @@ public class VMProcess extends UserProcess {
 	 */
 	protected void unloadSections() {
 		super.unloadSections();
+	}
+
+	private void handlePageFault(int faultAddr) {
+
+	}
+
+	public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+
+		Lib.assertTrue(offset >= 0 && length >= 0
+				&& offset + length <= data.length);
+
+		byte[] memory = Machine.processor().getMemory();
+	
+
+		if (vaddr < 0 || vaddr >= memory.length) {
+			return 0;
+		}
+
+		int numBytesLeft = length;    
+		int currVaddr = vaddr;
+		int currDataOffset = offset;
+		int currVpn = 0;
+		int currVpnOffset = 0;
+		int currPhysAddr = 0;
+		int currNumToCopy = 0;
+		int numBytesCopied = 0;
+
+
+		while (numBytesLeft  > 0 && currVaddr < numPages * pageSize) {
+			currVpn = Processor.pageFromAddress(currVaddr);
+			currVpnOffset = Processor.offsetFromAddress(currVaddr);
+			currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
+
+
+			if (currVpn < 0 || currVpn >= pageTable.length) {
+				return numBytesCopied;
+			}
+
+			if (!pageTable[currVpn].valid) {
+				//***********************Should this be Vaddr?
+				handlePageFault(vaddr);
+			}
+		
+			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
+			System.arraycopy(memory, currPhysAddr , data, currDataOffset, currNumToCopy);
+			numBytesCopied  += currNumToCopy;
+			numBytesLeft -= currNumToCopy;
+			currDataOffset += currNumToCopy;
+
+			currVaddr+= currNumToCopy;
+		}
+
+		return numBytesCopied;
+	}
+
+	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
+    
+		// System.out.println("UserProcess.writeVirtualMemory #3");
+		Lib.assertTrue(offset >= 0 && length >= 0 
+			&& offset + length <= data.length);
+
+		//System.out.println("UserProcess.writeVirtualMemory #2");
+		byte[] memory = Machine.processor().getMemory();
+
+		if (vaddr < 0 || vaddr >= memory.length) {
+			return 0;
+		}
+
+		int numBytesLeft = length;    
+		int currVaddr = vaddr;
+		int currDataOffset = offset;
+		int currVpn = 0;
+		int currVpnOffset = 0;
+		int currPhysAddr = 0;
+		int currNumToCopy = 0;
+		int numBytesCopied = 0;
+
+		
+	
+		while (numBytesLeft > 0 && currVaddr < numPages * pageSize) {
+
+			//System.out.println("UserProcess.writeVirtualMemory #4 currVaddr: " + currVaddr);
+			// if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
+			currVpn = Processor.pageFromAddress(currVaddr);
+
+			if (pageTable[currVpn].readOnly) {
+				return numBytesCopied;
+			}
+
+			if (!pageTable[currVpn].valid) {
+				//***********************Should this be Vaddr?
+				handlePageFault(vaddr);
+			}
+
+
+			//System.out.println("UserProcess.writeVirtualMemory #5");
+			currVpnOffset = Processor.offsetFromAddress(currVaddr);
+			currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
+
+
+		
+			//System.out.println("writeVirtualMemory#6 memory.length: " + memory.length);
+			// pageSize - currVpnOffset does NOT have to -1
+			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
+			// System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
+			if (currPhysAddr + currNumToCopy>= memory.length) {
+				return numBytesCopied;
+			}
+
+			System.arraycopy(data, currDataOffset, memory, currPhysAddr, currNumToCopy);
+
+			numBytesCopied += currNumToCopy;
+			numBytesLeft -= currNumToCopy;
+			currDataOffset += currNumToCopy;
+
+			currVaddr += currNumToCopy;
+		}
+	
+		//    System.out.println("UserProcess.writeVirtualMemory #8");
+		return numBytesCopied;
 	}
 
 	/**
@@ -60,9 +198,12 @@ public class VMProcess extends UserProcess {
 		Processor processor = Machine.processor();
 
 		switch (cause) {
-		default:
-			super.handleException(cause);
-			break;
+			case Processor.exceptionPageFault:
+				int badAddr = processor.readRegister(Processor.regBadVAddr);
+				handlePageFault(badAddr);
+			default:
+				super.handleException(cause);
+				break;
 		}
 	}
 
