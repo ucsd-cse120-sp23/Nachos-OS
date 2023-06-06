@@ -223,11 +223,11 @@ public class UserProcess {
 				return numBytesCopied;
 			}
 
-		if (!pageTable[currVpn].valid) {
-			//System.out.println("UserProcess.readVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
-			//System.out.println("UserProcess.readVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
-			return numBytesCopied;
-		}
+			if (!pageTable[currVpn].valid) {
+				//System.out.println("UserProcess.readVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
+				//System.out.println("UserProcess.readVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
+				return numBytesCopied;
+			}
 			// *********************************DON'T set used in project 2!!!!!!!!!!!!!!!!!
 			//***************************** otherwwise, pageexception and vpn >= translation.length
 			//	pageTable[currVpn].used = true;
@@ -1291,4 +1291,3 @@ public class UserProcess {
 	private HashMap<Integer,UserProcess> childMap;
 	private HashMap<Integer, Integer> statusMap;
 }
-
