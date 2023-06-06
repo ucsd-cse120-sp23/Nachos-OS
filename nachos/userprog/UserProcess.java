@@ -1238,7 +1238,7 @@ public class UserProcess {
 				break;
 
 			default:
-				//System.out.println("UserProcess 1236 Processor.exceptionNames[cause]: "+Processor.exceptionNames[cause]);
+				//System.out.println("Processor.exceptionNames[cause]: "+Processor.exceptionNames[cause]);
 				Lib.debug(dbgProcess, "Unexpected exception: "
 						+ Processor.exceptionNames[cause]);
 
