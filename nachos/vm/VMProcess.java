@@ -41,16 +41,17 @@ public class VMProcess extends UserProcess {
 	@Override
 	protected boolean loadSections() {
 
-
 		pageTable = new TranslationEntry[numPages];
 		// initial pageTable with numPages
 		for (int i = 0; i < numPages; i++) {
-			//System.out.println("UserProcess.loadSections #1 ppn: "+ppn);
 
 			// In project 3, according to Task 1-1, set it to be INVALID
 			pageTable[i] = new TranslationEntry(i, -1, false, false, false, false);
 			//System.out.println("UserProcess.loadSections #2 pageTable[i].vpn: " + pageTable[i].vpn);
 		}
+		VMKernel.processCountLock.acquire();
+		VMKernel.processCount++;
+		VMKernel.processCountLock.release();
 		return true;
 	}
 
@@ -60,10 +61,11 @@ public class VMProcess extends UserProcess {
 	protected void unloadSections() {
 		super.unloadSections();
 	}
+	
 
 	private void handlePageFault(int faultAddr) {
 		int vpn = Processor.pageFromAddress(faultAddr);
-		System.out.println(vpn);
+		//System.out.println(vpn);
 		int ppn = VMKernel.freePhysicalPages.removeFirst();
 
 		//set pageTable
@@ -73,6 +75,7 @@ public class VMProcess extends UserProcess {
 
 		//find the corresponding seciton
 		for (int s = 0; s < coff.getNumSections(); s++) {
+			System.out.println("here");
 			CoffSection section = coff.getSection(s);
 			if(section.getFirstVPN() <= vpn) {
 				for (int i = 0; i < section.getLength(); i++) {
@@ -80,6 +83,7 @@ public class VMProcess extends UserProcess {
 					if (currvpn == vpn) {
 						pageTable[vpn].readOnly = section.isReadOnly();
 						section.loadPage(i, ppn);
+						System.out.println("entered");
 						return;
 					}
 				}
@@ -87,259 +91,13 @@ public class VMProcess extends UserProcess {
 		}
 		//zero fill
 		byte[] data = new byte[pageSize];
+		System.out.println("Zero fill start");
 		System.arraycopy(data, 0, Machine.processor().getMemory(), Processor.makeAddress(ppn, 0), pageSize);
-
-
-
-
-
-		// VMKernel.IVTLock.acquire();
-		// int vpn = Processor.pageFromAddress(faultAddr);
-		// int ppn;
-		// VMKernel.freePhysicalPageLock.acquire();//protect freePhysical page list
-		// //evict and swapping 
-		// if (VMKernel.freePhysicalPages.isEmpty()) { // if no more free pages
-		// 	//run clock algorithm to find victim page;
-		// 	ppn = evict();
-		// } else {
-		// 	ppn = VMKernel.freePhysicalPages.removeFirst();
-		// }
-		// VMKernel.freePhysicalPageLock.release();
-
-		
-		// int sectionPageNum = 0;
-		// CoffSection sectionToLoad = null;
-		// //find the corresponding seciton
-		// for (int s = 0; s < coff.getNumSections(); s++) {
-		// 	CoffSection section = coff.getSection(s);
-
-		// 	for (int i = 0; i < section.getLength(); i++) {
-		// 		int currvpn = section.getFirstVPN() + i;
-		// 		if (currvpn == vpn) {
-		// 			sectionToLoad = section;
-		// 			sectionPageNum = i;
-		// 		}
-		// 	}
-		// }
-		
-		// //has been swapped out before
-		// if (pageTable[vpn].ppn != -1) {//swap from file
-		// 	//swapin
-		// 	int spn = pageTable[vpn].ppn;
-		// 	VMKernel.swap.read(spn*pageSize, Machine.processor().getMemory(), Processor.makeAddress(ppn, 0), pageSize);
-		// 	VMKernel.swapTrackerLock.acquire();
-		// 	VMKernel.swapTracker.add(spn);
-		// 	VMKernel.swapTrackerLock.release();
-		// }
-		// else {
-		// 	// still cannot find the section, meaning that it is stack or argument page
-		// 	if (sectionToLoad == null) {
-		// 		//zero fill
-		// 		byte[] data = new byte[pageSize];
-		// 		// ----------------------------------Need to make sure this is correct zero fill --------------------------------
-		// 		System.arraycopy(data, 0, Machine.processor().getMemory(), Processor.makeAddress(ppn, 0), pageSize);
-		// 	} else {
-		// 		// load from section
-		// 		sectionToLoad.loadPage(sectionPageNum, ppn);
-		// 	}
-		// }
-
-		// //set pageTable
-		// pageTable[vpn].valid = true;
-		// pageTable[vpn].ppn = ppn;
-		// pageTable[vpn].used = true;
-		// pageTable[vpn].readOnly = sectionToLoad.isReadOnly();
-		// // --------------------------Not sure whether is true or false -------------------------------------------------------
-		// pageTable[vpn].dirty = true;
-		
-		// //set inverted pageTable
-		// VMKernel.invertedPT[ppn].te = new TranslationEntry(vpn, ppn, true, sectionToLoad.isReadOnly(), true, true);
-		// VMKernel.invertedPT[ppn].Vprocess = this;
-		// // --------------------------Not sure whether should set it to true -------------------------------------------------------
-		// VMKernel.pinLock.acquire();
-		// VMKernel.invertedPT[ppn].isPinned = true;
-		// VMKernel.pinnedPageNum ++;
-		// VMKernel.pinLock.release();
-		
-		// VMKernel.IVTLock.release();
-
-	}
-
-	private int evict() {
-		//when there is no page to evict, keep waiting 
-		while (VMKernel.pinnedPageNum == VMKernel.invertedPT.length) {
-			VMKernel.pinCondition.sleep();
-		}
-
-		// run clock algorithm
-		int toEvict;
-		while(true) {
-			VMKernel.victim = (VMKernel.victim + 1) % VMKernel.invertedPT.length;
-			if (VMKernel.invertedPT[VMKernel.victim].isPinned) {
-				continue;
-			}
-
-			if (VMKernel.invertedPT[VMKernel.victim].te.used) {
-				VMKernel.invertedPT[VMKernel.victim].te.used = false;
-			}
-			else {
-				break;
-			}
-		}
-		toEvict = VMKernel.victim;
-		VMKernel.victim = (VMKernel.victim + 1) % VMKernel.invertedPT.length;
-		int vpn = VMKernel.invertedPT[toEvict].te.vpn;
-		VMProcess processThatLosePage = VMKernel.invertedPT[toEvict].Vprocess;
-		TranslationEntry processTE = processThatLosePage.pageTable[vpn];
-		if (processTE.dirty == true) {
-			VMKernel.swapTrackerLock.acquire();
-			int spn;
-			//swapout
-			if (VMKernel.swapTracker.isEmpty()) {
-				//need to grow swap file
-				spn = VMKernel.swapFIleCounter;
-				VMKernel.swapFIleCounter++;
-			} else {
-				spn = VMKernel.swapTracker.removeFirst();
-			}
-			VMKernel.swap.write(spn * pageSize, Machine.processor().getMemory(), processTE.ppn, pageSize);
-			processTE.ppn = spn;
-			VMKernel.swapTrackerLock.release();
-		} else {
-			processTE.ppn = -1;
-		}
-		processTE.valid = false;
-
-		return toEvict;
-	}
-
-	@Override
-	public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) {
-
-		Lib.assertTrue(offset >= 0 && length >= 0
-				&& offset + length <= data.length);
-
-		byte[] memory = Machine.processor().getMemory();
-
-
-	
-
-		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr >= memory.length) {
-			return 0;
-		}
-
-		int numBytesLeft = length;    
-		int currVaddr = vaddr;
-		int currDataOffset = offset;
-		int currVpn = 0;
-		int currVpnOffset = 0;
-		int currPhysAddr = 0;
-		int currNumToCopy = 0;
-		int numBytesCopied = 0;
-
-
-		while (numBytesLeft  > 0 && currVaddr < numPages * pageSize) {
-			currVpn = Processor.pageFromAddress(currVaddr);
-			currVpnOffset = Processor.offsetFromAddress(currVaddr);
-			currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
-
-
-			if (currVpn < 0 || currVpn >= pageTable.length) {
-				return numBytesCopied;
-			}
-
-			if (!pageTable[currVpn].valid) {
-				handlePageFault(currVaddr);;
-			}
-
-			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
-			System.arraycopy(memory, currPhysAddr , data, currDataOffset, currNumToCopy);
-			numBytesCopied  += currNumToCopy;
-			numBytesLeft -= currNumToCopy;
-			currDataOffset += currNumToCopy;
-
-			currVaddr+= currNumToCopy;
-		}
-
-		System.out.println("exit");
-		return numBytesCopied;
-	}
-
-	@Override
-	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
-    
-		Lib.assertTrue(offset >= 0 && length >= 0 
-			&& offset + length <= data.length);
-
-		//System.out.println("UserProcess.writeVirtualMemory #2");
-		byte[] memory = Machine.processor().getMemory();
-
-		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr >= memory.length) {
-			return 0;
-		}
-
-		int numBytesLeft = length;    
-		int currVaddr = vaddr;
-		int currDataOffset = offset;
-		int currVpn = 0;
-		int currVpnOffset = 0;
-		int currPhysAddr = 0;
-		int currNumToCopy = 0;
-		int numBytesCopied = 0;
-
-		
-		//*******************************Do we need a lock and why? */
-		//lock.acquire();
-		while (numBytesLeft > 0 && currVaddr < numPages * pageSize) {
-
-			currVpn = Processor.pageFromAddress(currVaddr);
-
-			if (pageTable[currVpn].readOnly) {
-
-				return numBytesCopied;
-			}
-
-			if (!pageTable[currVpn].valid) {
-				handlePageFault(currVaddr);
-			}
-
-			//System.out.println("UserProcess.writeVirtualMemory #5");
-			currVpnOffset = Processor.offsetFromAddress(currVaddr);
-			currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
-
-			//      System.out.println("UserProcess.writeVirtualMemory #5.1 currPhysAddr: "+ currPhysAddr);
-			//      System.out.println("UserProcess.writeVirtualMemory #5.1 Processor.maxPages * pageSize: "+ Processor.maxPages * pageSize);
-			//      System.out.println("UserProcess.writeVirtualMemory #5.1 Processor.maxPages: "+ Processor.maxPages);
-
-			//if (currPhysAddr >= memory.length) {
-			//  return numBytesCopied;
-			//}
-			//System.out.println("writeVirtualMemory#6 memory.length: " + memory.length);
-			// pageSize - currVpnOffset does NOT have to -1
-			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
-			// System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
-			if (currPhysAddr + currNumToCopy>= memory.length) {
-				return numBytesCopied;
-			}
-
-			System.arraycopy(data, currDataOffset, memory, currPhysAddr, currNumToCopy);
-
-
-
-			numBytesCopied += currNumToCopy;
-			numBytesLeft -= currNumToCopy;
-			currDataOffset += currNumToCopy;
-
-			currVaddr += currNumToCopy;
-		}
-
-		return numBytesCopied;
+		System.out.println("Zero fill end");
 	}
 
 	/**
-	 * Handle a user exception. Called by <tt>UserKernel.exceptionHandler()</tt>
+	 * Handle a user exception. Called by <tt>VMKernel.exceptionHandler()</tt>
 	 * . The <i>cause</i> argument identifies which exception occurred; see the
 	 * <tt>Processor.exceptionZZZ</tt> constants.
 	 * 
@@ -353,9 +111,9 @@ public class VMProcess extends UserProcess {
 				int badAddr = processor.readRegister(Processor.regBadVAddr);
 				handlePageFault(badAddr);
 				break;
-			default:
-				super.handleException(cause);
-				break;
+		default:
+			super.handleException(cause);
+			break;
 		}
 	}
 

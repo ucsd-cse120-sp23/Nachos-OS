@@ -48,8 +48,12 @@ int
 main (int argc, char *argv[])
 {
     init_buf ();
+    printf("1st in swap4");
     validate_buf ();
+    printf("2nd in swap4");
     validate_buf ();
+    printf("3rd in swap4");
     validate_buf ();
+    printf("4th in swap4");
     exit (-1000);
 }

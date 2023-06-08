@@ -605,6 +605,7 @@ public class UserProcess {
 	 */
 	protected void unloadSections() {
 		lock.acquire();
+		
 		for (int i = 0; i < pageTable.length; i++) {
 			if (pageTable[i].valid) {
 				UserKernel.freePhysicalPages.add(pageTable[i].ppn);
@@ -665,14 +666,16 @@ public class UserProcess {
 
 		Lib.debug(dbgProcess, "UserProcess.handleExit (" + status + ")");
 		
-
+		System.out.println("UserProcess.handleExit");
 		for(int i = 0; i<fileDescriptors.length; i++){
+			System.out.println("UserProcess.handleExit 1st for loop");
 			if(fileDescriptors[i] != null){
 				fileDescriptors[i].close();
 				fileDescriptors[i] = null;
 			} 
 		} 
 		unloadSections();
+		
 		Integer ExitStatus = status;
 
 		// if(status==0){
@@ -688,7 +691,7 @@ public class UserProcess {
 			this.parent.statusMap.put(this.PID, ExitStatus);
 			this.parent = null;
 		}
-
+		
 		// like in Alarm, Iterator is SAFER than for each
 		// Any children of the process no longer have a parent process.
 
@@ -697,22 +700,24 @@ public class UserProcess {
 		// is this structure ideal? perhaps Map<Integer, List<UserProcess>> map = new HashMap<>(); would be better 
 		while (it_childMap.hasNext()){
 			// remove the parenthood of the child if it has children
-			// System.out.println("UserProcess.handleExit #2 childMap iteartor hasNext");
+			//System.out.println("UserProcess.handleExit #2 childMap iteartor hasNext");
 			Map.Entry<Integer, UserProcess> pair_PIDChild = (Map.Entry<Integer, UserProcess > )it_childMap.next(); 
 			UserProcess child = pair_PIDChild.getValue();
 			child.parent = null;
 			
 		} 
-
+		
 		childMap.clear();
 		
-
+		
 		
 		// Machine.halt();
 		coff.close();
+		System.out.println("handle exit after unload");
 		UserKernel.processCountLock.acquire();
 		//If the last process then terminate the system
 		if (--UserKernel.processCount == 0) {
+			
 			Kernel.kernel.terminate();
 		}
 		UserKernel.processCountLock.release();
