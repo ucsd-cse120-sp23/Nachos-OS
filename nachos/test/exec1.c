@@ -10,10 +10,11 @@
 int
 main (int argc, char *argv[])
 {
-    char *prog = "write4.coff";
+    char *prog = "exit1.coff";
     int pid;
-
+    printf("HELLO");
     pid = exec (prog, 0, 0);
+    printf("NICE");
     // the exit status of this process is the pid of the child process
     exit (pid);
 }

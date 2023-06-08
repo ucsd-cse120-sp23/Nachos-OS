@@ -223,11 +223,18 @@ public class UserProcess {
 				return numBytesCopied;
 			}
 
-		if (!pageTable[currVpn].valid) {
-			//System.out.println("UserProcess.readVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
-			//System.out.println("UserProcess.readVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
-			return numBytesCopied;
-		}
+			// Project 2 implementation
+			// Should NOT be changed in Project 3 Task 1-4
+			// Changes should be in VMProcess.java
+			//-----------------------------
+			if (!pageTable[currVpn].valid) {
+				//System.out.println("UserProcess.readVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
+				//System.out.println("UserProcess.readVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
+				return numBytesCopied;
+			}
+			//--------------------------------------------------------------------------------------
+
+
 			// *********************************DON'T set used in project 2!!!!!!!!!!!!!!!!!
 			//***************************** otherwwise, pageexception and vpn >= translation.length
 			//	pageTable[currVpn].used = true;
@@ -343,11 +350,17 @@ public class UserProcess {
 		// if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
 		currVpn = Processor.pageFromAddress(currVaddr);
 
+		// Project 2 implementation
+		// Should NOT be changed in Project 3 Task 1-4
+		// Changes should be in VMProcess.java
+		//-----------------------------------------------------------------------------------------------
 		if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
 			//System.out.println("UserProcess.writeVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
 			//System.out.println("UserProcess.writeVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
 			return numBytesCopied;
 		}
+		//-----------------------------------------------------------------------------------------------
+		
 
 		//System.out.println("UserProcess.writeVirtualMemory #5");
 		currVpnOffset = Processor.offsetFromAddress(currVaddr);
@@ -532,14 +545,20 @@ public class UserProcess {
 		// initial pageTable with numPages
 		for (int i = 0; i < numPages; i++) {
 			//System.out.println("UserProcess.loadSections #1 ppn: "+ppn);
-			pageTable[i] = new TranslationEntry(i, i, true, false, false, false);
+
+			// In project 2, valid is set to true.
+			// In project 3, according to Task 1-1, set it to be INVALID
+			//***************************************************
+			pageTable[i] = new TranslationEntry(i, i, false, false, false, false);
 			//System.out.println("UserProcess.loadSections #2 pageTable[i].vpn: " + pageTable[i].vpn);
 		}
 
 		// *********************lock
 		// TODO: check the usage of lock
 
-
+		// In Project 3, we move that part to handleException.
+		//---------------------------------------------------------
+		// we do the samething in helper function handlePageFault and call it in handleException
 		// System.out.println("UserProcess.loadSections #2.05 coff.getNumSections(): " + coff.getNumSections());
 
 		// load sections
@@ -594,7 +613,7 @@ public class UserProcess {
 		UserKernel.processCountLock.release();
 
 		//System.out.println("UserProcess.loadSections #4 AFTERLockRelease: ");
-
+		//---------------------------------------------------------
 		return true;
 
     
@@ -917,7 +936,7 @@ public class UserProcess {
 		}
 
 		if (count == 0) {
-        //     System.out.println("FileToVrMem #3");
+            //  System.out.println("FileToVrMem #3");
 			return 0;
 		}
 
@@ -962,6 +981,7 @@ public class UserProcess {
 		int numBytesWrittenToVrMem = writeVirtualMemory(buffer, fileContent, 0, numBytesReadFromFile);
 		// System.out.println("FileToVrMem #8 numBytesWrittenToVrMem: " + numBytesWrittenToVrMem);
 
+		System.out.println("UserProcess.handleRead:" + numBytesWrittenToVrMem + " Count:" + count);
 		return numBytesWrittenToVrMem;
 	}
 
@@ -1216,6 +1236,8 @@ public class UserProcess {
 
 	}
 
+
+
 	/**
 	 * Handle a user exception. Called by <tt>UserKernel.exceptionHandler()</tt>
 	 * . The <i>cause</i> argument identifies which exception occurred; see the
@@ -1227,6 +1249,11 @@ public class UserProcess {
 		Processor processor = Machine.processor();
 
 		switch (cause) {
+
+			// Previously, MISTAKENLY changed that in project 3 Task 1
+			// However, that should be kept and change should be in VMProcess.java
+			// Project 1, 2, starter code with some debug 
+			//--------------------------------------
 			case Processor.exceptionSyscall:
 				int result = handleSyscall(processor.readRegister(Processor.regV0),
 						processor.readRegister(Processor.regA0),
@@ -1238,11 +1265,15 @@ public class UserProcess {
 				break;
 
 			default:
-				//System.out.println("UserProcess 1236 Processor.exceptionNames[cause]: "+Processor.exceptionNames[cause]);
+				// debug
+				//System.out.println("Processor.exceptionNames[cause]: "+Processor.exceptionNames[cause]);
+				//handleExit(cause);
 				Lib.debug(dbgProcess, "Unexpected exception: "
 						+ Processor.exceptionNames[cause]);
+				
 
 				Lib.assertNotReached("Unexpected exception");
+			//------------------------------------------------------------------
 		}
 	}
 
