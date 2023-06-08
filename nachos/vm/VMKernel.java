@@ -33,7 +33,8 @@ public class VMKernel extends UserKernel {
 		pinLock = new Lock();
 		pinnedPageNum = 0;
 		IVTLock = new Lock();
-		pinCondition = new Condition(pinLock);
+		// pinSleepLock = new Lock();
+		// pinCondition = new Condition2(pinSleepLock);
 		victim = 0;
 		freePhysicalPageLock = new Lock();
 	}
@@ -102,8 +103,10 @@ public class VMKernel extends UserKernel {
 	public static Lock swapTrackerLock;
 
 	public static IVT[] invertedPT;
-	public static Condition pinCondition;
+	// public static Lock pinSleepLock;
+	// public static Condition2 pinCondition;
 	public static Lock pinLock;
+	
 	public static int pinnedPageNum;
 	public static Lock IVTLock;
 	

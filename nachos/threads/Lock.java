@@ -32,6 +32,7 @@ public class Lock {
 	public void acquire() {
 		Lib.assertTrue(!isHeldByCurrentThread());
 
+		// System.out.println("Lock acquired in Lock.java");
 		boolean intStatus = Machine.interrupt().disable();
 		KThread thread = KThread.currentThread();
 
@@ -55,6 +56,7 @@ public class Lock {
 	public void release() {
 		Lib.assertTrue(isHeldByCurrentThread());
 
+		// System.out.println("Lock released in Lock.java");
 		boolean intStatus = Machine.interrupt().disable();
 
 		if ((lockHolder = waitQueue.nextThread()) != null)
