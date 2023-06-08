@@ -1238,11 +1238,14 @@ public class UserProcess {
 				break;
 
 			default:
+				handleExit(cause);
 				//System.out.println("Processor.exceptionNames[cause]: "+Processor.exceptionNames[cause]);
 				Lib.debug(dbgProcess, "Unexpected exception: "
 						+ Processor.exceptionNames[cause]);
+				
 
 				Lib.assertNotReached("Unexpected exception");
+				
 		}
 	}
 

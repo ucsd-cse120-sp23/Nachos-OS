@@ -56,6 +56,7 @@ public class VMKernel extends UserKernel {
 	 * Terminate this kernel. Never returns.
 	 */
 	public void terminate() {
+		swap.close();
 		ThreadedKernel.fileSystem.remove("swap");
 		super.terminate();
 	}
