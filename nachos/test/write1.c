@@ -14,6 +14,7 @@ int
 main (int argc, char *argv[])
 {
     char *str = "\nroses are red\nviolets are blue\nI love Nachos\nand so do you\n\n";
+	printf("test1 begins\n");
     
     while (*str) {
 	int r = write (1, str, 1);

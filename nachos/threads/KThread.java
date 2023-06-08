@@ -202,8 +202,9 @@ public class KThread {
 
 		currentThread.status = statusFinished;
 
-		if (currentThread.callingThread != null) {
-			currentThread.callingThread.ready();
+		KThread calling = currentThread.callingThread;
+		if (calling != null) {
+			calling.ready();
 		}
 
 		sleep();
