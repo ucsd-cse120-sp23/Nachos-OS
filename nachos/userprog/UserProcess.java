@@ -559,60 +559,60 @@ public class UserProcess {
 		// In Project 3, we move that part to handleException.
 		//---------------------------------------------------------
 		// we do the samething in helper function handlePageFault and call it in handleException
-		// // System.out.println("UserProcess.loadSections #2.05 coff.getNumSections(): " + coff.getNumSections());
+		// System.out.println("UserProcess.loadSections #2.05 coff.getNumSections(): " + coff.getNumSections());
 
-		// // load sections
-		// for (int s = 0; s < coff.getNumSections(); s++) {
-		// 	CoffSection section = coff.getSection(s);
+		// load sections
+		for (int s = 0; s < coff.getNumSections(); s++) {
+			CoffSection section = coff.getSection(s);
 
-		// 	Lib.debug(dbgProcess, "\tinitializing " + section.getName()
-		// 	+ " section (" + section.getLength() + " pages)");
+			Lib.debug(dbgProcess, "\tinitializing " + section.getName()
+			+ " section (" + section.getLength() + " pages)");
 
-		// 	//      System.out.println("UserProcess.loadSections #2.1 pageTable.length: " + pageTable.length);
-		// 	//      System.out.println("UserProcess.loadSections #2.2 section.getLength: " + section.getLength());
-		// 	for (int i = 0; i < section.getLength(); i++) {
-		// 		int vpn = section.getFirstVPN() + i;
-		// 		if (vpn < 0 || vpn >= pageTable.length) {
-		// 			//System.out.println("UserProcess.loadSections #4 vpn >= pageTable.length");
-		// 			return false;
-		// 		}
-		// 		pageTable[vpn].ppn = UserKernel.freePhysicalPages.removeFirst();
+			//      System.out.println("UserProcess.loadSections #2.1 pageTable.length: " + pageTable.length);
+			//      System.out.println("UserProcess.loadSections #2.2 section.getLength: " + section.getLength());
+			for (int i = 0; i < section.getLength(); i++) {
+				int vpn = section.getFirstVPN() + i;
+				if (vpn < 0 || vpn >= pageTable.length) {
+					//System.out.println("UserProcess.loadSections #4 vpn >= pageTable.length");
+					return false;
+				}
+				pageTable[vpn].ppn = UserKernel.freePhysicalPages.removeFirst();
 
-		// 		// System.out.println("UserProcess.loadSections #3 vpn: " + vpn);
+				// System.out.println("UserProcess.loadSections #3 vpn: " + vpn);
 
-		// 		// pageTable[count] = new TranslationEntry(count, ppn, true,
-		// 		// section.isReadOnly(), false, false);
-		// 		// for now, just assume virtual addresses=physical addresses
-		// 		// section.loadPage(i, vpn);
+				// pageTable[count] = new TranslationEntry(count, ppn, true,
+				// section.isReadOnly(), false, false);
+				// for now, just assume virtual addresses=physical addresses
+				// section.loadPage(i, vpn);
 
-		// 		pageTable[vpn].vpn = vpn;
-		// 		pageTable[vpn].valid = true;
+				pageTable[vpn].vpn = vpn;
+				pageTable[vpn].valid = true;
 				
-		// 		// System.out.println("UserProcess.loadSections #3 pageTable[i].vpn: " + pageTable[i].vpn);
-		// 		// System.out.println("translations.legnth: "+translations.length);
-		// 		pageTable[vpn].readOnly = section.isReadOnly();
+				// System.out.println("UserProcess.loadSections #3 pageTable[i].vpn: " + pageTable[i].vpn);
+				// System.out.println("translations.legnth: "+translations.length);
+				pageTable[vpn].readOnly = section.isReadOnly();
 
-		// 		section.loadPage(i, pageTable[vpn].ppn);
+				section.loadPage(i, pageTable[vpn].ppn);
 
-		// 	}
-		// }
+			}
+		}
 
 
-		// //deal with stack page and argument page
-		// for (int i = numPages - 9; i < numPages; i++) {
-		// 	pageTable[i].ppn = UserKernel.freePhysicalPages.removeFirst();
-		// 	pageTable[i].valid = true;
-		// }
+		//deal with stack page and argument page
+		for (int i = numPages - 9; i < numPages; i++) {
+			pageTable[i].ppn = UserKernel.freePhysicalPages.removeFirst();
+			pageTable[i].valid = true;
+		}
 
 	
-		// //System.out.println("UserProcess.loadSections #4 BEFORELockRelease: ");
-		// lock.release();
+		//System.out.println("UserProcess.loadSections #4 BEFORELockRelease: ");
+		lock.release();
 
-		// UserKernel.processCountLock.acquire();
-		// UserKernel.processCount++;
-		// UserKernel.processCountLock.release();
+		UserKernel.processCountLock.acquire();
+		UserKernel.processCount++;
+		UserKernel.processCountLock.release();
 
-		// //System.out.println("UserProcess.loadSections #4 AFTERLockRelease: ");
+		//System.out.println("UserProcess.loadSections #4 AFTERLockRelease: ");
 		//---------------------------------------------------------
 		return true;
 
@@ -936,7 +936,7 @@ public class UserProcess {
 		}
 
 		if (count == 0) {
-        //     System.out.println("FileToVrMem #3");
+            //  System.out.println("FileToVrMem #3");
 			return 0;
 		}
 
@@ -981,6 +981,7 @@ public class UserProcess {
 		int numBytesWrittenToVrMem = writeVirtualMemory(buffer, fileContent, 0, numBytesReadFromFile);
 		// System.out.println("FileToVrMem #8 numBytesWrittenToVrMem: " + numBytesWrittenToVrMem);
 
+		System.out.println("UserProcess.handleRead:" + numBytesWrittenToVrMem + " Count:" + count);
 		return numBytesWrittenToVrMem;
 	}
 
@@ -1265,9 +1266,11 @@ public class UserProcess {
 
 			default:
 				// debug
-				//System.out.println("UserProcess 1236 Processor.exceptionNames[cause]: "+Processor.exceptionNames[cause]);
+				//System.out.println("Processor.exceptionNames[cause]: "+Processor.exceptionNames[cause]);
+				//handleExit(cause);
 				Lib.debug(dbgProcess, "Unexpected exception: "
 						+ Processor.exceptionNames[cause]);
+				
 
 				Lib.assertNotReached("Unexpected exception");
 			//------------------------------------------------------------------
