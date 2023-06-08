@@ -223,22 +223,17 @@ public class UserProcess {
 				return numBytesCopied;
 			}
 
-			// if (!pageTable[currVpn].valid) {
-			// 	//System.out.println("UserProcess.readVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
-			// 	//System.out.println("UserProcess.readVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
-			// 	return numBytesCopied;
-			// }
-
-			// Project 3 Task 1-4
-			//--------------------------------------------------------------------------------
+			// Project 2 implementation
+			// Should NOT be changed in Project 3 Task 1-4
+			// Changes should be in VMProcess.java
+			//-----------------------------
 			if (!pageTable[currVpn].valid) {
-				// call HANDLEPAGEFAULT, NOT handleException
-				//***********************Should this be currVaddr?
-				handlePageFault(currVaddr);
+				//System.out.println("UserProcess.readVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
+				//System.out.println("UserProcess.readVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
+				return numBytesCopied;
 			}
-
-
 			//--------------------------------------------------------------------------------------
+
 
 			// *********************************DON'T set used in project 2!!!!!!!!!!!!!!!!!
 			//***************************** otherwwise, pageexception and vpn >= translation.length
@@ -355,27 +350,17 @@ public class UserProcess {
 		// if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
 		currVpn = Processor.pageFromAddress(currVaddr);
 
-		// Project 2
+		// Project 2 implementation
+		// Should NOT be changed in Project 3 Task 1-4
+		// Changes should be in VMProcess.java
 		//-----------------------------------------------------------------------------------------------
-		// if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
-		// 	//System.out.println("UserProcess.writeVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
-		// 	//System.out.println("UserProcess.writeVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
-		// 	return numBytesCopied;
-		// }
-		//-----------------------------------------------------------------------------------------------
-		
-		// Project 3 Task 1-4
-		//--------------------------------------------------------------------------------
-		if (!pageTable[currVpn].valid) {
-			// call HANDLEPAGEFAULT, NOT handleException
-			//***********************Should this be currVaddr?
-			handlePageFault(currVaddr);
-		}
-
-		if (pageTable[currVpn].readOnly) {
+		if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
+			//System.out.println("UserProcess.writeVirtualMemory #4.5 !pageTable[currVpn].valid: " +!pageTable[currVpn].valid);
+			//System.out.println("UserProcess.writeVirtualMemory #4.5 pageTable[currVpn].readOnly: " +pageTable[currVpn].readOnly);
 			return numBytesCopied;
 		}
-		//--------------------------------------------------------------------------------------
+		//-----------------------------------------------------------------------------------------------
+		
 
 		//System.out.println("UserProcess.writeVirtualMemory #5");
 		currVpnOffset = Processor.offsetFromAddress(currVaddr);
@@ -1250,89 +1235,7 @@ public class UserProcess {
 
 	}
 
-	private boolean handlePageFault(int faultVirtualAddress) {
 
-		// System.out.println("UserProcess.loadSections #2.05 coff.getNumSections(): " + coff.getNumSections());
-		int faultVPN = Processor.pageFromAddress(faultVirtualAddress);
-
-		// load sections
-		for (int s = 0; s < coff.getNumSections(); s++) {
-			CoffSection section = coff.getSection(s);
-
-			Lib.debug(dbgProcess, "\tinitializing " + section.getName()
-			+ " section (" + section.getLength() + " pages)");
-
-			// moved that from inner loop to there. Is that OK?
-			//**************************************************
-			int firstVPN = section.getFirstVPN();
-			//************************************************ 
-
-			//      System.out.println("UserProcess.loadSections #2.1 pageTable.length: " + pageTable.length);
-			//      System.out.println("UserProcess.loadSections #2.2 section.getLength: " + section.getLength());
-			for (int i = 0; i < section.getLength(); i++) {
-				int vpn = firstVPN + i;
-
-
-
-				if (vpn < 0 || vpn >= pageTable.length) {
-					//System.out.println("UserProcess.loadSections #4 vpn >= pageTable.length");
-					return false;
-				}
-
-				// Project 3 Part 1-3
-				//*********************************************
-				// this is a STACK
-				if (vpn != faultVPN) {
-					// not dirty, then zero-fill 
-					if (!pageTable[vpn].dirty) {
-						
-					}
-
-					// dirty, deal this in TASK 2
-				}
-				//*****************************************
-
-
-				pageTable[vpn].ppn = UserKernel.freePhysicalPages.removeFirst();
-
-				// System.out.println("UserProcess.loadSections #3 vpn: " + vpn);
-
-				// pageTable[count] = new TranslationEntry(count, ppn, true,
-				// section.isReadOnly(), false, false);
-				// for now, just assume virtual addresses=physical addresses
-				// section.loadPage(i, vpn);
-
-				pageTable[vpn].vpn = vpn;
-				pageTable[vpn].valid = true;
-				
-				// System.out.println("UserProcess.loadSections #3 pageTable[i].vpn: " + pageTable[i].vpn);
-				// System.out.println("translations.legnth: "+translations.length);
-				pageTable[vpn].readOnly = section.isReadOnly();
-
-				section.loadPage(i, pageTable[vpn].ppn);
-
-			}
-		}
-
-
-		//deal with stack page and argument page
-		for (int i = numPages - 9; i < numPages; i++) {
-			pageTable[i].ppn = UserKernel.freePhysicalPages.removeFirst();
-			pageTable[i].valid = true;
-		}
-
-	
-		//System.out.println("UserProcess.loadSections #4 BEFORELockRelease: ");
-		lock.release();
-
-		UserKernel.processCountLock.acquire();
-		UserKernel.processCount++;
-		UserKernel.processCountLock.release();
-
-		//System.out.println("UserProcess.loadSections #4 AFTERLockRelease: ");
-		return true;
-
-	}
 
 	/**
 	 * Handle a user exception. Called by <tt>UserKernel.exceptionHandler()</tt>
@@ -1345,13 +1248,9 @@ public class UserProcess {
 		Processor processor = Machine.processor();
 
 		switch (cause) {
-			// Project 3
-			//-------------------------------
-			case Processor.exceptionPageFault:
-				handlePageFault();
 
-			//---------------------------
-
+			// Previously, MISTAKENLY changed that in project 3 Task 1
+			// However, that should be kept and change should be in VMProcess.java
 			// Project 1, 2, starter code with some debug 
 			//--------------------------------------
 			case Processor.exceptionSyscall:
