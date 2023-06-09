@@ -367,6 +367,7 @@ public class VMProcess extends UserProcess {
 			}
 
 			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
+			currNumToCopy = Math.min(currNumToCopy, memory.length - currPhysAddr);
 			
 			System.arraycopy(memory, currPhysAddr , data, currDataOffset, currNumToCopy);
 
@@ -531,6 +532,7 @@ public class VMProcess extends UserProcess {
 			// 	VMKernel.pinLock.release();
 			// 	return numBytesCopied;
 			// }
+			currNumToCopy = Math.min(currNumToCopy, memory.length - currPhysAddr);
 
 			System.arraycopy(data, currDataOffset, memory, currPhysAddr, currNumToCopy);
 
