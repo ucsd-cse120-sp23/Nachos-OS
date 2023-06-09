@@ -984,7 +984,7 @@ public class UserProcess {
 		int numBytesWrittenToVrMem = writeVirtualMemory(buffer, fileContent, 0, numBytesReadFromFile);
 		// System.out.println("FileToVrMem #8 numBytesWrittenToVrMem: " + numBytesWrittenToVrMem);
 
-		System.out.println("UserProcess.handleRead:" + numBytesWrittenToVrMem + " Count:" + count);
+		// System.out.println("UserProcess.handleRead:" + numBytesWrittenToVrMem + " Count:" + count);
 		return numBytesWrittenToVrMem;
 	}
 
