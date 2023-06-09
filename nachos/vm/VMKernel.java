@@ -115,4 +115,8 @@ public class VMKernel extends UserKernel {
 	//use for clock algorithm
 	public static int victim;
 	public static Lock freePhysicalPageLock;
+
+	// debug
+	//----------------
+	public static int swapCount = 0;
 }
