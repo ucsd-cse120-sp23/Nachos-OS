@@ -377,9 +377,9 @@ public class UserProcess {
 		// pageSize - currVpnOffset does NOT have to -1
 		currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
 		// System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
-		if (currPhysAddr + currNumToCopy>= memory.length) {
-			return numBytesCopied;
-		}
+		// if (currPhysAddr + currNumToCopy>= memory.length) {
+		// 	return numBytesCopied;
+		// }
 
 		System.arraycopy(data, currDataOffset, memory, currPhysAddr, currNumToCopy);
 
