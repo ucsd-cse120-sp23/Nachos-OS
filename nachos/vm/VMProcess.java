@@ -110,7 +110,7 @@ public class VMProcess extends UserProcess {
 		
 		//has been swapped out before
 		if (pageTable[vpn].ppn != -1) {//swap from file
-			System.out.println("entered swap ---------------------------------------------------------------");
+			// System.out.println("entered swap ---------------------------------------------------------------");
 			VMKernel.pinLock.acquire();
 			VMKernel.invertedPT[ppn].isPinned = true;
 			VMKernel.pinLock.release();
@@ -179,7 +179,7 @@ public class VMProcess extends UserProcess {
 		// pinning -----------------------------
 		//when there is no page to evict, keep waiting 
 		while (VMKernel.pinnedPageNum == VMKernel.invertedPT.length) {
-			System.out.println("waiting");
+			// System.out.println("waiting");
 			pinSleepLock.acquire();
 			pinCondition.sleep();
 			pinSleepLock.release();
@@ -527,7 +527,7 @@ public class VMProcess extends UserProcess {
 			currVpnOffset = Processor.offsetFromAddress(currVaddr);
 			currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
 			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
-			System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
+			// System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
 			// if (currPhysAddr + currNumToCopy>= memory.length) {
 			// 	VMKernel.pinLock.acquire();
 			// 	VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = false;
