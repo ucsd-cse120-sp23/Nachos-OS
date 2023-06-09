@@ -240,6 +240,7 @@ public class UserProcess {
 			//	pageTable[currVpn].used = true;
 			// pageSize - currVpnOffset does NOT have to -1
 			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
+			currNumToCopy = Math.min(currNumToCopy, memory.length - currPhysAddr);
 			System.arraycopy(memory, currPhysAddr , data, currDataOffset, currNumToCopy);
 			numBytesCopied  += currNumToCopy;
 			numBytesLeft -= currNumToCopy;
@@ -376,6 +377,7 @@ public class UserProcess {
 		//System.out.println("writeVirtualMemory#6 memory.length: " + memory.length);
 		// pageSize - currVpnOffset does NOT have to -1
 		currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
+		currNumToCopy = Math.min(currNumToCopy, memory.length - currPhysAddr);
 		// System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
 		// if (currPhysAddr + currNumToCopy>= memory.length) {
 		// 	return numBytesCopied;
