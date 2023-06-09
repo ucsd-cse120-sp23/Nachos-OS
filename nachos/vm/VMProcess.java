@@ -4,6 +4,7 @@ import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 import nachos.vm.*;
+import nachos.vm.VMKernel.IVT;
 
 /**
  * A <tt>UserProcess</tt> that supports demand-paging.
@@ -74,6 +75,12 @@ public class VMProcess extends UserProcess {
 			System.out.println("vpn:" + pageTable[i].vpn + " ppn:" + pageTable[i].ppn + " valid:" + pageTable[i].valid);
 		}
 		System.out.println("finish printing pageTable");
+
+		System.out.println("starting print Inverted page table");
+		for (int i = 0; i < VMKernel.invertedPT.length; i ++) {
+			System.out.println("vpn:" +  VMKernel.invertedPT[i].vpn + " ppn:" + i );
+		}
+		System.out.println("finish printing Inverted pageTable");
 	}
 
 	private void handlePageFault(int faultAddr) {
@@ -155,13 +162,13 @@ public class VMProcess extends UserProcess {
 		VMKernel.invertedPT[ppn].Vprocess = this;
 		
 		// System.out.println("print after evicting");
-		//print();
+		// print();
 		VMKernel.IVTLock.release();
 
 	}
 
 	private int evict() {
-		//System.out.println(VMKernel.pinnedPageNum);
+		//System.out.println(VMKernel.isPinnedPageNum);
 		//System.out.println(VMKernel.invertedPT.length);
 
 		// pinning -----------------------------
@@ -195,7 +202,8 @@ public class VMProcess extends UserProcess {
 		VMProcess processThatLosePage = VMKernel.invertedPT[toEvict].Vprocess;
 		TranslationEntry processTE = processThatLosePage.pageTable[vpn];
 		if (processTE.dirty == true) {
-			System.out.println("entered swap in evict ---------------------------------------------------------------");
+			//System.out.println("entered swap in evict ---------------------------------------------------------------");
+			
 			VMKernel.swapTrackerLock.acquire();
 			VMKernel.pinLock.acquire();
 			VMKernel.invertedPT[toEvict].isPinned = true;
@@ -209,6 +217,7 @@ public class VMProcess extends UserProcess {
 			} else {
 				spn = VMKernel.swapTracker.removeFirst();
 			}
+			//System.out.println("swap:" + processTE.vpn + "to spn" + spn);
 			int size = pageSize;
 			byte[] mem = Machine.processor().getMemory();
 			
@@ -380,6 +389,7 @@ public class VMProcess extends UserProcess {
 		return numBytesCopied;
 	}
 
+
 	@Override
 	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) {
 		// Lib.assertTrue(offset >= 0 && length >= 0 
@@ -477,6 +487,10 @@ public class VMProcess extends UserProcess {
 
 			currVpn = Processor.pageFromAddress(currVaddr);
 
+			if (currVpn <0 || currVpn >= pageTable.length) {
+				return numBytesCopied;
+			}
+
 			if (pageTable[currVpn].readOnly) {
 				VMKernel.pinLock.acquire();
 				VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = false;
@@ -489,8 +503,9 @@ public class VMProcess extends UserProcess {
 			}
 
 			if (!pageTable[currVpn].valid) {
-				handlePageFault(currVaddr);
-				currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
+				vaddr = Processor.makeAddress(currVaddr, 0);
+				handlePageFault(vaddr);
+
 				VMKernel.pinLock.acquire();
 				VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = true;
 				VMKernel.pinnedPageNum++;
@@ -506,16 +521,16 @@ public class VMProcess extends UserProcess {
 			currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
 			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
 			// System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
-			if (currPhysAddr + currNumToCopy>= memory.length) {
-				VMKernel.pinLock.acquire();
-				VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = false;
-				VMKernel.pinnedPageNum--;
-				pinSleepLock.acquire();
-				pinCondition.wake();
-				pinSleepLock.release();
-				VMKernel.pinLock.release();
-				return numBytesCopied;
-			}
+			// if (currPhysAddr + currNumToCopy>= memory.length) {
+			// 	VMKernel.pinLock.acquire();
+			// 	VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = false;
+			// 	VMKernel.pinnedPageNum--;
+			// 	pinSleepLock.acquire();
+			// 	pinCondition.wake();
+			// 	pinSleepLock.release();
+			// 	VMKernel.pinLock.release();
+			// 	return numBytesCopied;
+			// }
 
 			System.arraycopy(data, currDataOffset, memory, currPhysAddr, currNumToCopy);
 
