@@ -437,17 +437,13 @@ public class VMProcess extends UserProcess {
 				// vaddr = Processor.makeAddress(currVaddr, 0);
 				// handlePageFault(vaddr);
 				handlePageFault(currVaddr);
-
-				VMKernel.pinLock.acquire();
-				VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = true;
-				VMKernel.pinnedPageNum++;
-				VMKernel.pinLock.release();
-			} else {
-				VMKernel.pinLock.acquire();
-				VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = true;
-				VMKernel.pinnedPageNum++;
-				VMKernel.pinLock.release();
 			}
+
+			VMKernel.pinLock.acquire();
+			VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = true;
+			VMKernel.pinnedPageNum++;
+			VMKernel.pinLock.release();
+
 			
 
 			//System.out.println("UserProcess.writeVirtualMemory #5");
@@ -587,6 +583,7 @@ public class VMProcess extends UserProcess {
 		// return numBytesCopied;
 
 		// pinning --------------------------------------------------------------------
+
 		Lib.assertTrue(offset >= 0 && length >= 0 
 			&& offset + length <= data.length);
 
@@ -598,27 +595,134 @@ public class VMProcess extends UserProcess {
 			return 0;
 		}
 
-		int numBytesCopied = 0;
+		// WAY 1
+		//-------------------------------------------------------------
+		// int numBytesCopied = 0;
 
-		int numBytesLeft = length;    
+		// int numBytesLeft = length;    
+		// int currVaddr = vaddr;
+		// int currDataOffset = offset;
+		// int currVpn = Processor.pageFromAddress(currVaddr);
+		// int currVpnOffset = Processor.offsetFromAddress(currVaddr);
+		// int currPhysAddr = 0;
+		// int currNumToCopy = 0;
+
+
+		// while (numBytesLeft > 0) {
+		// // while (numBytesLeft > 0 && currVaddr < numPages * pageSize) {
+
+
+
+		// 	if (currVpn <0 || currVpn >= pageTable.length) {
+		// 		return numBytesCopied;
+		// 	}
+
+
+
+
+		// 	if (!pageTable[currVpn].valid) {
+		// 		// vaddr = Processor.makeAddress(currVaddr, 0);
+		// 		// handlePageFault(vaddr);
+		// 		handlePageFault(currVaddr);
+		// 	}
+
+		// 	VMKernel.pinLock.acquire();
+		// 	VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = true;
+		// 	VMKernel.pinnedPageNum++;
+		// 	VMKernel.pinLock.release();
+
+		// 	if (pageTable[currVpn].readOnly) {
+		// 		VMKernel.pinLock.acquire();
+		// 		VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = false;
+		// 		VMKernel.pinnedPageNum--;
+		// 		pinSleepLock.acquire();
+		// 		pinCondition.wake();
+		// 		pinSleepLock.release();
+		// 		VMKernel.pinLock.release();
+		// 		return numBytesCopied;
+		// 	}
+
+		// 	currVpnOffset = Processor.offsetFromAddress(currVaddr);
+		// 	// System.out.println("writeVirtualMemory#6 currVpnOffset: " + currVpnOffset);
+		// 	currPhysAddr = Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset);
+		// 	// System.out.println("writeVirtualMemory#6 currPhysAddr: " + currPhysAddr);
+		// 	currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
+		// 	// System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
+
+		// 	// currNumToCopy = Math.min(currNumToCopy, memory.length - currPhysAddr);
+
+		// 	System.arraycopy(data, currDataOffset, memory, currPhysAddr, currNumToCopy);
+
+		// 	pageTable[currVpn].used = true;
+		// 	pageTable[currVpn].dirty = true;
+
+
+
+		// 	VMKernel.pinLock.acquire();
+		// 	VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = false;
+		// 	VMKernel.pinnedPageNum--;
+		// 	pinSleepLock.acquire();
+		// 	pinCondition.wake();
+		// 	pinSleepLock.release();
+		// 	VMKernel.pinLock.release();
+
+
+		// 	numBytesCopied += currNumToCopy;
+		// 	numBytesLeft -= currNumToCopy;
+		// 	currDataOffset += currNumToCopy;
+
+
+
+		// 	currVpn++;
+		// 	currVaddr = Processor.makeAddress(currVpn, 0);
+		// }
+
+
+		// WAY 2
+		//--------------------------------------------------------------------
+				int numBytesLeft = length;    
 		int currVaddr = vaddr;
 		int currDataOffset = offset;
-		int currVpn = Processor.pageFromAddress(currVaddr);
-		int currVpnOffset = Processor.offsetFromAddress(currVaddr);
+		int currVpn = 0;
+		int currVpnOffset = 0;
 		int currPhysAddr = 0;
 		int currNumToCopy = 0;
+		int numBytesCopied = 0;
 
 
-		while (numBytesLeft > 0) {
-		// while (numBytesLeft > 0 && currVaddr < numPages * pageSize) {
+		while (numBytesLeft > 0 && currVaddr < numPages * pageSize) {
 
 
+			//System.out.println("UserProcess.writeVirtualMemory #4 currVaddr: " + currVaddr);
+			// if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
+			currVpn = Processor.pageFromAddress(currVaddr);
+			// currVpnOffset = Processor.offsetFromAddress(currVaddr);
 
-			if (currVpn <0 || currVpn >= pageTable.length) {
+
+			// Calculating currPhysAddr in there, BEFORE checking currVpn, causes test failure for small number of physical pagess
+			// While AFTER works fine
+			// (NOT related to currVPNOffset, since it's moved accordingly)
+			// If ommitting calculation of currPhysAddr, there's a huge space in printout
+			//----------------------------------------------------------------------------------------------------------------------
+			// currPhysAddr = Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset);
+			//----------------------------------------------------------------------------------------------------------------------
+
+			// In project 2, missed that, so did in project 3 originally
+			if (currVpn < 0 || currVpn >= pageTable.length) {
 				return numBytesCopied;
 			}
 
 
+			if (!pageTable[currVpn].valid) {
+				// vaddr = Processor.makeAddress(currVaddr, 0);
+				// handlePageFault(vaddr);
+				handlePageFault(currVaddr);
+			}
+
+			VMKernel.pinLock.acquire();
+			VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = true;
+			VMKernel.pinnedPageNum++;
+			VMKernel.pinLock.release();
 
 			if (pageTable[currVpn].readOnly) {
 				VMKernel.pinLock.acquire();
@@ -630,38 +734,53 @@ public class VMProcess extends UserProcess {
 				VMKernel.pinLock.release();
 				return numBytesCopied;
 			}
+			
 
-			if (!pageTable[currVpn].valid) {
-				// vaddr = Processor.makeAddress(currVaddr, 0);
-				// handlePageFault(vaddr);
-				handlePageFault(currVaddr);
-
-				VMKernel.pinLock.acquire();
-				VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = true;
-				VMKernel.pinnedPageNum++;
-				VMKernel.pinLock.release();
-			} else {
-				VMKernel.pinLock.acquire();
-				VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = true;
-				VMKernel.pinnedPageNum++;
-				VMKernel.pinLock.release();
-			}
-
+			//System.out.println("UserProcess.writeVirtualMemory #5");
 			currVpnOffset = Processor.offsetFromAddress(currVaddr);
-			// System.out.println("writeVirtualMemory#6 currVpnOffset: " + currVpnOffset);
-			currPhysAddr = Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset);
-			// System.out.println("writeVirtualMemory#6 currPhysAddr: " + currPhysAddr);
-			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
-			// System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
+			// System.out.println("UserProcess.writeVirtualMemory #5.1 currVpnOffset: "+ currVpnOffset);
 
-			// currNumToCopy = Math.min(currNumToCopy, memory.length - currPhysAddr);
+
+
+			// This USUALLY FALSE
+			// System.out.println("UserProcess.writeVirtualMemory #5.1 pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(currVpn, currVpnOffset): " 
+			// + (pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(currVpn, currVpnOffset)));
+
+			// // // This is USUALLY TRUE as tested
+			// System.out.println("UserProcess.writeVirtualMemory #5.1 pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset): " 
+			// + (pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset)));
+
+			// currPhysAddr = Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset);
+			// System.out.println("UserProcess.writeVirtualMemory #5.1 currPhysAddr: "+ currPhysAddr);
+			//      System.out.println("UserProcess.writeVirtualMemory #5.1 Processor.maxPages * pageSize: "+ Processor.maxPages * pageSize);
+			//      System.out.println("UserProcess.writeVirtualMemory #5.1 Processor.maxPages: "+ Processor.maxPages);
+
+			// Calculating currPhysAddr in there, AFTER checking currVpn, works well
+			// While BEFORE causes failure for small number of physical pagess
+			// (NOT related to currVPNOffset, since it's moved accordingly)
+			// If ommitting calculation of currPhysAddr, there's a huge space in printout
+			//----------------------------------------------------------------------------------------------------------------------
+			currPhysAddr = Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset);
+			//----------------------------------------------------------------------------------------------------------------------
+			
+			//if (currPhysAddr >= memory.length) {
+			//  return numBytesCopied;
+			//}
+			
+			// System.out.println("writeVirtualMemory#6 memory.length: " + memory.length);
+			// pageSize - currVpnOffset does NOT have to -1
+			currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
+			currNumToCopy = Math.min(currNumToCopy, memory.length - currPhysAddr);
+
+			// System.out.println("writeVirtualMemory#6 currNumToCopy: " + currNumToCopy);
+			// if (currPhysAddr + currNumToCopy>= memory.length) {
+			// 	return numBytesCopied;
+			// }
 
 			System.arraycopy(data, currDataOffset, memory, currPhysAddr, currNumToCopy);
 
 			pageTable[currVpn].used = true;
 			pageTable[currVpn].dirty = true;
-
-
 
 			VMKernel.pinLock.acquire();
 			VMKernel.invertedPT[pageTable[currVpn].ppn].isPinned = false;
@@ -676,10 +795,9 @@ public class VMProcess extends UserProcess {
 			numBytesLeft -= currNumToCopy;
 			currDataOffset += currNumToCopy;
 
+			currVaddr += currNumToCopy;
 
-
-			currVpn++;
-			currVaddr = Processor.makeAddress(currVpn, 0);
+			// System.out.println("VMProcess.writeVirtualMemory #8 currVaddr: "+currVaddr);
 		}
 
 		return numBytesCopied;
