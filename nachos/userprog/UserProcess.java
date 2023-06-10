@@ -215,9 +215,6 @@ public class UserProcess {
 
 		while (numBytesLeft  > 0 && currVaddr < numPages * pageSize) {
 			currVpn = Processor.pageFromAddress(currVaddr);
-			currVpnOffset = Processor.offsetFromAddress(currVaddr);
-			currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
-
 
 			if (currVpn < 0 || currVpn >= pageTable.length) {
 				return numBytesCopied;
@@ -234,6 +231,23 @@ public class UserProcess {
 			}
 			//--------------------------------------------------------------------------------------
 
+			currVpnOffset = Processor.offsetFromAddress(currVaddr);
+
+			// System.out.println("UserProcess.writeVirtualMemory #5.1 currVpnOffset: "+ currVpnOffset);
+
+
+			
+			// // This is USUALLY TRUE as tested
+			// WHY?
+			System.out.println("UserProcess.readVirtualMemory #5.1 pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(currVpn, currVpnOffset): " 
+				+ (pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(currVpn, currVpnOffset)));
+			// // This is USUALLY TRUE as tested
+			System.out.println("UserProcess.readVirtualMemory #5.1 pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset): " 
+				+ (pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset)));
+
+
+		
+			currPhysAddr = Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset);
 
 			// *********************************DON'T set used in project 2!!!!!!!!!!!!!!!!!
 			//***************************** otherwwise, pageexception and vpn >= translation.length
@@ -351,6 +365,11 @@ public class UserProcess {
 		// if (!pageTable[currVpn].valid || pageTable[currVpn].readOnly) {
 		currVpn = Processor.pageFromAddress(currVaddr);
 
+		// In project 2, missed that
+		if (currVpn < 0 || currVpn >= pageTable.length) {
+			return numBytesCopied;
+		}
+
 		// Project 2 implementation
 		// Should NOT be changed in Project 3 Task 1-4
 		// Changes should be in VMProcess.java
@@ -365,16 +384,29 @@ public class UserProcess {
 
 		//System.out.println("UserProcess.writeVirtualMemory #5");
 		currVpnOffset = Processor.offsetFromAddress(currVaddr);
-		currPhysAddr = pageTable[currVpn].ppn * pageSize + currVpnOffset;
 
-		//      System.out.println("UserProcess.writeVirtualMemory #5.1 currPhysAddr: "+ currPhysAddr);
+		// System.out.println("UserProcess.writeVirtualMemory #5.1 currVpnOffset: "+ currVpnOffset);
+
+		// // This is USUALLY TRUE as tested
+		// WHY?
+		// System.out.println("UserProcess.readVirtualMemory #5.1 pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(currVpn, currVpnOffset): " 
+		// 	+ (pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(currVpn, currVpnOffset)));
+
+
+		// // This is USUALLY TRUE as tested
+		// System.out.println("UserProcess.readVirtualMemory #5.1 pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset): " 
+		// 	+ (pageTable[currVpn].ppn * pageSize + currVpnOffset == Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset)));
+
+		currPhysAddr = Processor.makeAddress(pageTable[currVpn].ppn, currVpnOffset);
+
+		// System.out.println("UserProcess.writeVirtualMemory #5.1 currPhysAddr: "+ currPhysAddr);
 		//      System.out.println("UserProcess.writeVirtualMemory #5.1 Processor.maxPages * pageSize: "+ Processor.maxPages * pageSize);
 		//      System.out.println("UserProcess.writeVirtualMemory #5.1 Processor.maxPages: "+ Processor.maxPages);
 
 		//if (currPhysAddr >= memory.length) {
 		//  return numBytesCopied;
 		//}
-		//System.out.println("writeVirtualMemory#6 memory.length: " + memory.length);
+		// System.out.println("writeVirtualMemory#6 memory.length: " + memory.length);
 		// pageSize - currVpnOffset does NOT have to -1
 		currNumToCopy = Math.min(numBytesLeft, pageSize - currVpnOffset);
 		currNumToCopy = Math.min(currNumToCopy, memory.length - currPhysAddr);
